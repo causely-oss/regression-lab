@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-generator
+  namespace: scenario-01
+  labels:
+    app: load-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-generator
+  template:
+    metadata:
+      labels:
+        app: load-generator
+    spec:
+      containers:
+      - name: load-generator
+        image: docker.io/moyle123/load-generator:v1
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        args:
+        - "--frontend-url"
+        - "http://frontend:8080"
+        - "--browse-rps"
+        - "100"
+        - "--checkout-rps"
+        - "5"
+        - "--search-rps"
+        - "20"
+        - "--auth-rps"
+        - "3"
+        - "--catalog-rps"
+        - "8"
+        - "--orders-rps"
+        - "5"
+        - "--cart-rps"
+        - "10"
+        - "--ingest-rps"
+        - "3"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi

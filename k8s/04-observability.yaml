@@ -1,0 +1,403 @@
+---
+# ── postgres-exporter ─────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter
+  namespace: scenario-01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-exporter
+  template:
+    metadata:
+      labels:
+        app: postgres-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9187"
+    spec:
+      containers:
+        - name: postgres-exporter
+          image: prometheuscommunity/postgres-exporter:v0.15.0
+          ports:
+            - containerPort: 9187
+          env:
+            - name: DATA_SOURCE_NAME
+              value: postgresql://postgres:password@payments-db:5432/payments?sslmode=disable
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter
+  namespace: scenario-01
+spec:
+  selector:
+    app: postgres-exporter
+  ports:
+    - port: 9187
+      targetPort: 9187
+
+---
+# ── redis-exporter ────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-exporter
+  namespace: scenario-01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-exporter
+  template:
+    metadata:
+      labels:
+        app: redis-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+    spec:
+      containers:
+        - name: redis-exporter
+          image: oliver006/redis_exporter:v1.58.0
+          ports:
+            - containerPort: 9121
+          env:
+            - name: REDIS_ADDR
+              value: redis://redis:6379
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-exporter
+  namespace: scenario-01
+spec:
+  selector:
+    app: redis-exporter
+  ports:
+    - port: 9121
+      targetPort: 9121
+
+---
+# ── kafka-exporter ────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-exporter
+  namespace: scenario-01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-exporter
+  template:
+    metadata:
+      labels:
+        app: kafka-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9308"
+    spec:
+      containers:
+        - name: kafka-exporter
+          image: docker.io/moyle123/kafka-exporter:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9308
+          args:
+            - --kafka.server=kafka:9092
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-exporter
+  namespace: scenario-01
+spec:
+  selector:
+    app: kafka-exporter
+  ports:
+    - port: 9308
+      targetPort: 9308
+
+---
+# ── Scrape config for the cluster's shared Prometheus (monitoring namespace) ──
+# Picked up because kube-prometheus-stack-prometheus's scrapeConfigSelector
+# matches release: kube-prometheus-stack and scrapeConfigNamespaceSelector is {}
+# (all namespaces). Replicates the old annotation-based pod discovery.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: scenario-01-pods
+  namespace: scenario-01
+  labels:
+    release: kube-prometheus-stack
+spec:
+  kubernetesSDConfigs:
+    - role: Pod
+      namespaces:
+        names: [scenario-01]
+  relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      action: keep
+      regex: "true"
+    - sourceLabels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+      action: replace
+      targetLabel: __metrics_path__
+      regex: (.+)
+    - sourceLabels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+      action: replace
+      regex: ([^:]+)(?::[0-9]+)?;([0-9]+)
+      replacement: $1:$2
+      targetLabel: __address__
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_label_app]
+      targetLabel: job
+
+---
+# ── Alert rules for the cluster's shared Prometheus (monitoring namespace) ────
+# Picked up because kube-prometheus-stack-prometheus's ruleSelector matches
+# release: kube-prometheus-stack and ruleNamespaceSelector is {} (all namespaces).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: scenario-01-alerts
+  namespace: scenario-01
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    # ── Scenario 1: Kafka consumer stall ──────────────────────────────────
+    - name: scenario-01.kafka
+      rules:
+        - alert: KafkaConsumerGroupLagHigh
+          expr: >
+            kafka_consumergroup_lag_sum{consumergroup="inventory-service-group",topic="inventory-updates"}
+            > 1000
+          for: 30s
+          labels:
+            severity: critical
+            flow: orders
+            namespace: scenario-01
+            topic: inventory-updates
+            consumergroup: inventory-service-group
+          annotations:
+            summary: "inventory-service Kafka consumer lag above 1000"
+            description: "inventory-service-group lag on inventory-updates is {{ $value | humanize }} messages"
+
+    # ── Scenarios 3 & 4: DB latency fault ──────────────────────────────────
+    - name: scenario-01.db-latency
+      rules:
+        - alert: CheckoutHighErrorRate
+          expr: >
+            sum by (namespace, pod) (rate(http_requests_total{job="checkout",status=~"5.."}[5m]))
+            /
+            sum by (namespace, pod) (rate(http_requests_total{job="checkout"}[5m]))
+            > 0.01
+          for: 30s
+          labels:
+            severity: critical
+            flow: checkout
+            namespace: scenario-01
+          annotations:
+            summary: "Checkout 5xx error rate above 1%"
+            description: "checkout error rate is {{ $value | humanizePercentage }}"
+
+        - alert: PaymentsAPIHighErrorRate
+          expr: >
+            sum by (namespace, pod) (rate(http_requests_total{job="payments-api",status=~"5.."}[5m]))
+            /
+            sum by (namespace, pod) (rate(http_requests_total{job="payments-api"}[5m]))
+            > 0.01
+          for: 30s
+          labels:
+            severity: critical
+            flow: checkout
+            namespace: scenario-01
+          annotations:
+            summary: "payments-api 5xx error rate above 1%"
+            description: "payments-api error rate is {{ $value | humanizePercentage }}"
+
+        - alert: PaymentsDBQueryLatencyHigh
+          expr: >
+            histogram_quantile(0.95,
+              sum by (namespace, pod, le) (rate(db_query_duration_seconds_bucket{job="payments-api"}[5m]))
+            ) > 0.5
+          for: 30s
+          labels:
+            severity: critical
+            flow: checkout
+            namespace: scenario-01
+          annotations:
+            summary: "payments-db query p95 above 500ms"
+            description: "DB query p95 is {{ $value | humanizeDuration }}"
+
+    # ── Scenarios 5, 6, 7: Deep chain latency fault ────────────────────────
+    - name: scenario-01.deep-chain
+      rules:
+        - alert: RecommendationServiceLatencyHigh
+          expr: >
+            histogram_quantile(0.95,
+              sum by (namespace, pod, le) (rate(http_request_duration_seconds_bucket{job="recommendation-service"}[5m]))
+            ) > 0.5
+          for: 30s
+          labels:
+            severity: critical
+            flow: catalog
+            namespace: scenario-01
+          annotations:
+            summary: "recommendation-service p95 latency above 500ms"
+            description: "recommendation-service p95 is {{ $value | humanizeDuration }}"
+
+        - alert: ReviewServiceLatencyHigh
+          expr: >
+            histogram_quantile(0.95,
+              sum by (namespace, pod, le) (rate(http_request_duration_seconds_bucket{job="review-service"}[5m]))
+            ) > 0.5
+          for: 30s
+          labels:
+            severity: warning
+            flow: catalog
+            namespace: scenario-01
+          annotations:
+            summary: "review-service p95 latency above 500ms"
+            description: "review-service p95 is {{ $value | humanizeDuration }}"
+
+        - alert: CatalogServiceLatencyHigh
+          expr: >
+            histogram_quantile(0.95,
+              sum by (namespace, pod, le) (rate(http_request_duration_seconds_bucket{job="catalog-service"}[5m]))
+            ) > 0.5
+          for: 30s
+          labels:
+            severity: warning
+            flow: catalog
+            namespace: scenario-01
+          annotations:
+            summary: "catalog-service p95 latency above 500ms"
+            description: "catalog-service p95 is {{ $value | humanizeDuration }}"
+
+        - alert: FrontendCatalogLatencyHigh
+          expr: >
+            histogram_quantile(0.95,
+              sum by (namespace, pod, le) (rate(http_request_duration_seconds_bucket{job="frontend"}[5m]))
+            ) > 1.0
+          for: 30s
+          labels:
+            severity: critical
+            flow: catalog
+            namespace: scenario-01
+          annotations:
+            summary: "Frontend p95 latency above 1s"
+            description: "frontend p95 is {{ $value | humanizeDuration }}"
+
+    # ── Scenario 3: External API degradation ──────────────────────────────
+    - name: scenario-01.external-api
+      rules:
+        - alert: ExternalPaymentAPIHighErrorRate
+          expr: >
+            sum by (namespace, pod) (rate(external_charges_total{status="failed"}[5m]))
+            /
+            sum by (namespace, pod) (rate(external_charges_total[5m]))
+            > 0.02
+          for: 30s
+          labels:
+            severity: critical
+            flow: billing
+            namespace: scenario-01
+          annotations:
+            summary: "external-payment-api failure rate above 2%"
+            description: "external-payment-api failure rate is {{ $value | humanizePercentage }}"
+
+        - alert: PaymentAdapterRetryAmplification
+          expr: >
+            sum by (namespace, pod) (rate(payment_adapter_retries_total{attempt!="1"}[5m]))
+            /
+            sum by (namespace, pod) (rate(payment_adapter_retries_total{attempt="1"}[5m]))
+            > 0.05
+          for: 30s
+          labels:
+            severity: warning
+            flow: billing
+            namespace: scenario-01
+          annotations:
+            summary: "payment-adapter retry amplification detected"
+            description: "{{ $value | humanizePercentage }} of requests required more than one attempt"
+
+    # ── Scenario 4: Redis memory pressure ─────────────────────────────────
+    - name: scenario-01.redis
+      rules:
+        - alert: RedisHighMemoryUsage
+          expr: >
+            (redis_memory_max_bytes > 0)
+            and
+            (redis_memory_used_bytes / redis_memory_max_bytes > 0.85)
+          for: 30s
+          labels:
+            severity: critical
+            flow: cache
+          annotations:
+            summary: "Redis memory usage above 85% of maxmemory"
+            description: "Redis memory is {{ $value | humanizePercentage }} of max ({{ $labels.instance }})"
+
+        - alert: RedisHighEvictionRate
+          expr: rate(redis_evicted_keys_total[5m]) > 10
+          for: 30s
+          labels:
+            severity: warning
+            flow: cache
+          annotations:
+            summary: "Redis evicting keys at high rate"
+            description: "Redis eviction rate is {{ $value | humanize }} keys/s"
+
+        - alert: RedisCacheHitRateLow
+          expr: >
+            rate(redis_keyspace_hits_total[5m])
+            /
+            (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))
+            < 0.50
+          for: 30s
+          labels:
+            severity: warning
+            flow: cache
+          annotations:
+            summary: "Redis cache hit rate below 50%"
+            description: "Redis cache hit rate is {{ $value | humanizePercentage }} (baseline ~92%)"
+
+    # ── General: any service ───────────────────────────────────────────────
+    - name: scenario-01.general
+      rules:
+        - alert: ServiceHighErrorRate
+          expr: >
+            (
+              sum by (job, namespace, pod) (rate(http_requests_total{status=~"5.."}[5m]))
+              /
+              sum by (job, namespace, pod) (rate(http_requests_total[5m]))
+            ) > 0.01
+          for: 30s
+          labels:
+            severity: warning
+            namespace: scenario-01
+          annotations:
+            summary: "{{ $labels.job }} error rate above 1%"
+            description: "{{ $labels.job }} 5xx rate is {{ $value | humanizePercentage }}"
+
+        - alert: ServiceHighLatencyP95
+          expr: >
+            histogram_quantile(0.95,
+              sum by (job, namespace, pod, le) (rate(http_request_duration_seconds_bucket[5m]))
+            ) > 0.5
+          for: 30s
+          labels:
+            severity: warning
+            namespace: scenario-01
+          annotations:
+            summary: "{{ $labels.job }} p95 latency above 500ms"
+            description: "{{ $labels.job }} p95 is {{ $value | humanizeDuration }}"

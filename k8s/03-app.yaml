@@ -1,0 +1,2307 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-service
+  namespace: scenario-01
+  labels:
+    service: analytics-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+        service: analytics-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8107"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: analytics-service
+        image: docker.io/moyle123/analytics-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8107
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: analytics-service
+        - name: REPORTING_SERVICE_URL
+          value: http://reporting-service:8110
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8107
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: scenario-01
+  labels:
+    service: analytics-service
+spec:
+  type: ClusterIP
+  selector:
+    app: analytics-service
+  ports:
+  - port: 8107
+    targetPort: 8107
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: scenario-01
+  labels:
+    service: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        service: api-gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+    spec:
+      containers:
+      - name: api-gateway
+        image: docker.io/moyle123/api-gateway:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8081
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: api-gateway
+        - name: CHECKOUT_URL
+          value: http://checkout:8082
+        - name: AUTH_SERVICE_URL
+          value: http://auth-service:8084
+        - name: CART_SERVICE_URL
+          value: http://cart-service:8101
+        - name: CATALOG_SERVICE_URL
+          value: http://catalog-service:8102
+        - name: ORDERS_SERVICE_URL
+          value: http://orders-service:8085
+        - name: PROFILE_SERVICE_URL
+          value: http://profile-service:8090
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: scenario-01
+  labels:
+    service: api-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: api-gateway
+  ports:
+  - port: 8081
+    targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-service
+  namespace: scenario-01
+  labels:
+    service: audit-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-service
+  template:
+    metadata:
+      labels:
+        app: audit-service
+        service: audit-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8105"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: audit-service
+        image: docker.io/moyle123/audit-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8105
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: audit-service
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8105
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-service
+  namespace: scenario-01
+  labels:
+    service: audit-service
+spec:
+  type: ClusterIP
+  selector:
+    app: audit-service
+  ports:
+  - port: 8105
+    targetPort: 8105
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: scenario-01
+  labels:
+    service: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        service: auth-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8084"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: auth-service
+        image: docker.io/moyle123/auth-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8084
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: auth-service
+        - name: SESSION_SERVICE_URL
+          value: http://session-service:8106
+        - name: USER_SERVICE_URL
+          value: http://user-service:8099
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8084
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: scenario-01
+  labels:
+    service: auth-service
+spec:
+  type: ClusterIP
+  selector:
+    app: auth-service
+  ports:
+  - port: 8084
+    targetPort: 8084
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-service
+  namespace: scenario-01
+  labels:
+    service: billing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-service
+  template:
+    metadata:
+      labels:
+        app: billing-service
+        service: billing-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8091"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: billing-service
+        image: docker.io/moyle123/billing-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8091
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: billing-service
+        - name: PAYMENT_ADAPTER_URL
+          value: http://payment-adapter:8092
+        - name: TAX_SERVICE_URL
+          value: http://tax-service:8112
+        - name: FRAUD_DETECTION_URL
+          value: http://fraud-detection:8111
+        - name: NOTIFICATION_SERVICE_URL
+          value: http://notification-service:8100
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8091
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-service
+  namespace: scenario-01
+  labels:
+    service: billing-service
+spec:
+  type: ClusterIP
+  selector:
+    app: billing-service
+  ports:
+  - port: 8091
+    targetPort: 8091
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache-service
+  namespace: scenario-01
+  labels:
+    service: cache-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cache-service
+  template:
+    metadata:
+      labels:
+        app: cache-service
+        service: cache-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8109"
+    spec:
+      containers:
+      - name: cache-service
+        image: docker.io/moyle123/cache-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8109
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: cache-service
+        - name: REDIS_URL
+          value: redis://redis:6379/8
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8109
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cache-service
+  namespace: scenario-01
+  labels:
+    service: cache-service
+spec:
+  type: ClusterIP
+  selector:
+    app: cache-service
+  ports:
+  - port: 8109
+    targetPort: 8109
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cart-service
+  namespace: scenario-01
+  labels:
+    service: cart-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cart-service
+  template:
+    metadata:
+      labels:
+        app: cart-service
+        service: cart-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8101"
+    spec:
+      containers:
+      - name: cart-service
+        image: docker.io/moyle123/cart-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8101
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: cart-service
+        - name: CATALOG_SERVICE_URL
+          value: http://catalog-service:8102
+        - name: PRICING_SERVICE_URL
+          value: http://pricing-service:8097
+        - name: SESSION_SERVICE_URL
+          value: http://session-service:8106
+        - name: REDIS_URL
+          value: redis://redis:6379/5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8101
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cart-service
+  namespace: scenario-01
+  labels:
+    service: cart-service
+spec:
+  type: ClusterIP
+  selector:
+    app: cart-service
+  ports:
+  - port: 8101
+    targetPort: 8101
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+  namespace: scenario-01
+  labels:
+    service: catalog-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+        service: catalog-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8102"
+    spec:
+      containers:
+      - name: catalog-service
+        image: docker.io/moyle123/catalog-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8102
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: catalog-service
+        - name: REVIEW_SERVICE_URL
+          value: http://review-service:8103
+        - name: MEDIA_SERVICE_URL
+          value: http://media-service:8114
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        - name: PRICING_SERVICE_URL
+          value: http://pricing-service:8097
+        - name: INVENTORY_SERVICE_URL
+          value: http://inventory-service:8086
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8102
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+  namespace: scenario-01
+  labels:
+    service: catalog-service
+spec:
+  type: ClusterIP
+  selector:
+    app: catalog-service
+  ports:
+  - port: 8102
+    targetPort: 8102
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: scenario-01
+  labels:
+    service: checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+        service: checkout
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: checkout
+        image: docker.io/moyle123/checkout:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8082
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: checkout
+        - name: PAYMENTS_API_URL
+          value: http://payments-api:8083
+        - name: REDIS_URL
+          value: redis://redis:6379/0
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        - name: PAYMENTS_TIMEOUT_SECONDS
+          value: '3.0'
+        - name: PRICING_SERVICE_URL
+          value: http://pricing-service:8097
+        - name: BILLING_SERVICE_URL
+          value: http://billing-service:8091
+        - name: FRAUD_DETECTION_URL
+          value: http://fraud-detection:8111
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout
+  namespace: scenario-01
+  labels:
+    service: checkout
+spec:
+  type: ClusterIP
+  selector:
+    app: checkout
+  ports:
+  - port: 8082
+    targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: delivery-service
+  namespace: scenario-01
+  labels:
+    service: delivery-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: delivery-service
+  template:
+    metadata:
+      labels:
+        app: delivery-service
+        service: delivery-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8096"
+    spec:
+      containers:
+      - name: delivery-service
+        image: docker.io/moyle123/delivery-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8096
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: delivery-service
+        - name: NOTIFICATION_SERVICE_URL
+          value: http://notification-service:8100
+        - name: WAREHOUSE_SERVICE_URL
+          value: http://warehouse-service:8113
+        - name: EMAIL_SERVICE_URL
+          value: http://email-service:8108
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8096
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: delivery-service
+  namespace: scenario-01
+  labels:
+    service: delivery-service
+spec:
+  type: ClusterIP
+  selector:
+    app: delivery-service
+  ports:
+  - port: 8096
+    targetPort: 8096
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discount-service
+  namespace: scenario-01
+  labels:
+    service: discount-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discount-service
+  template:
+    metadata:
+      labels:
+        app: discount-service
+        service: discount-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8098"
+    spec:
+      containers:
+      - name: discount-service
+        image: docker.io/moyle123/discount-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8098
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: discount-service
+        - name: LOYALTY_SERVICE_URL
+          value: http://loyalty-service:8104
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8098
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discount-service
+  namespace: scenario-01
+  labels:
+    service: discount-service
+spec:
+  type: ClusterIP
+  selector:
+    app: discount-service
+  ports:
+  - port: 8098
+    targetPort: 8098
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: email-service
+  namespace: scenario-01
+  labels:
+    service: email-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: email-service
+  template:
+    metadata:
+      labels:
+        app: email-service
+        service: email-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8108"
+    spec:
+      containers:
+      - name: email-service
+        image: docker.io/moyle123/email-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8108
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8108
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: email-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: email-service
+  namespace: scenario-01
+  labels:
+    service: email-service
+spec:
+  type: ClusterIP
+  selector:
+    app: email-service
+  ports:
+  - port: 8108
+    targetPort: 8108
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-payment-api
+  namespace: scenario-01
+  labels:
+    service: external-payment-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: external-payment-api
+  template:
+    metadata:
+      labels:
+        app: external-payment-api
+        service: external-payment-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8115"
+    spec:
+      containers:
+      - name: external-payment-api
+        image: docker.io/moyle123/external-payment-api:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8115
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8115
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: external-payment-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-payment-api
+  namespace: scenario-01
+  labels:
+    service: external-payment-api
+spec:
+  type: ClusterIP
+  selector:
+    app: external-payment-api
+  ports:
+  - port: 8115
+    targetPort: 8115
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fraud-detection
+  namespace: scenario-01
+  labels:
+    service: fraud-detection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fraud-detection
+  template:
+    metadata:
+      labels:
+        app: fraud-detection
+        service: fraud-detection
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8111"
+    spec:
+      containers:
+      - name: fraud-detection
+        image: docker.io/moyle123/fraud-detection:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8111
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: fraud-detection
+        - name: REDIS_URL
+          value: redis://redis:6379/9
+        - name: ANALYTICS_SERVICE_URL
+          value: http://analytics-service:8107
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8111
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-detection
+  namespace: scenario-01
+  labels:
+    service: fraud-detection
+spec:
+  type: ClusterIP
+  selector:
+    app: fraud-detection
+  ports:
+  - port: 8111
+    targetPort: 8111
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: scenario-01
+  labels:
+    app.kubernetes.io/name: frontend
+    service: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        service: frontend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+    spec:
+      containers:
+      - name: frontend
+        image: docker.io/moyle123/frontend:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: frontend
+        - name: API_GATEWAY_URL
+          value: http://api-gateway:8081
+        - name: SEARCH_SERVICE_URL
+          value: http://search-service:8088
+        - name: PROFILE_SERVICE_URL
+          value: http://profile-service:8090
+        - name: INGEST_SERVICE_URL
+          value: http://ingest-service:8093
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: scenario-01
+  labels:
+    app.kubernetes.io/name: frontend
+    service: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingest-service
+  namespace: scenario-01
+  labels:
+    service: ingest-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingest-service
+  template:
+    metadata:
+      labels:
+        app: ingest-service
+        service: ingest-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8093"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: ingest-service
+        image: docker.io/moyle123/ingest-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8093
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: ingest-service
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8093
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingest-service
+  namespace: scenario-01
+  labels:
+    service: ingest-service
+spec:
+  type: ClusterIP
+  selector:
+    app: ingest-service
+  ports:
+  - port: 8093
+    targetPort: 8093
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-service
+  namespace: scenario-01
+  labels:
+    service: inventory-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-service
+  template:
+    metadata:
+      labels:
+        app: inventory-service
+        service: inventory-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8086"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: inventory-service
+        image: docker.io/moyle123/inventory-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8086
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: inventory-service
+        - name: WAREHOUSE_SERVICE_URL
+          value: http://warehouse-service:8113
+        - name: NOTIFICATION_SERVICE_URL
+          value: http://notification-service:8100
+        - name: REDIS_URL
+          value: redis://redis:6379/1
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8086
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-service
+  namespace: scenario-01
+  labels:
+    service: inventory-service
+spec:
+  type: ClusterIP
+  selector:
+    app: inventory-service
+  ports:
+  - port: 8086
+    targetPort: 8086
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loyalty-service
+  namespace: scenario-01
+  labels:
+    service: loyalty-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loyalty-service
+  template:
+    metadata:
+      labels:
+        app: loyalty-service
+        service: loyalty-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8104"
+    spec:
+      containers:
+      - name: loyalty-service
+        image: docker.io/moyle123/loyalty-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8104
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: loyalty-service
+        - name: USER_SERVICE_URL
+          value: http://user-service:8099
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        - name: REDIS_URL
+          value: redis://redis:6379/6
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8104
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loyalty-service
+  namespace: scenario-01
+  labels:
+    service: loyalty-service
+spec:
+  type: ClusterIP
+  selector:
+    app: loyalty-service
+  ports:
+  - port: 8104
+    targetPort: 8104
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-service
+  namespace: scenario-01
+  labels:
+    service: media-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: media-service
+  template:
+    metadata:
+      labels:
+        app: media-service
+        service: media-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8114"
+    spec:
+      containers:
+      - name: media-service
+        image: docker.io/moyle123/media-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8114
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: media-service
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8114
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-service
+  namespace: scenario-01
+  labels:
+    service: media-service
+spec:
+  type: ClusterIP
+  selector:
+    app: media-service
+  ports:
+  - port: 8114
+    targetPort: 8114
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: scenario-01
+  labels:
+    service: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+        service: notification-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8100"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: notification-service
+        image: docker.io/moyle123/notification-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8100
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: notification-service
+        - name: EMAIL_SERVICE_URL
+          value: http://email-service:8108
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8100
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: scenario-01
+  labels:
+    service: notification-service
+spec:
+  type: ClusterIP
+  selector:
+    app: notification-service
+  ports:
+  - port: 8100
+    targetPort: 8100
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-service
+  namespace: scenario-01
+  labels:
+    service: orders-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orders-service
+  template:
+    metadata:
+      labels:
+        app: orders-service
+        service: orders-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: orders-service
+        image: docker.io/moyle123/orders-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8085
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: orders-service
+        - name: INVENTORY_SERVICE_URL
+          value: http://inventory-service:8086
+        - name: NOTIFICATION_SERVICE_URL
+          value: http://notification-service:8100
+        - name: SHIPPING_SERVICE_URL
+          value: http://shipping-service:8087
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8085
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-service
+  namespace: scenario-01
+  labels:
+    service: orders-service
+spec:
+  type: ClusterIP
+  selector:
+    app: orders-service
+  ports:
+  - port: 8085
+    targetPort: 8085
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-adapter
+  namespace: scenario-01
+  labels:
+    service: payment-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-adapter
+  template:
+    metadata:
+      labels:
+        app: payment-adapter
+        service: payment-adapter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8092"
+    spec:
+      containers:
+      - name: payment-adapter
+        image: docker.io/moyle123/payment-adapter:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8092
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: payment-adapter
+        - name: EXTERNAL_PAYMENT_URL
+          value: http://external-payment-api:8115
+        - name: NOTIFICATION_SERVICE_URL
+          value: http://notification-service:8100
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8092
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-adapter
+  namespace: scenario-01
+  labels:
+    service: payment-adapter
+spec:
+  type: ClusterIP
+  selector:
+    app: payment-adapter
+  ports:
+  - port: 8092
+    targetPort: 8092
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: scenario-01
+  labels:
+    service: payments-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payments-api
+  template:
+    metadata:
+      labels:
+        app: payments-api
+        service: payments-api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8083"
+    spec:
+      initContainers:
+      - name: wait-for-db
+        image: postgres:16-alpine
+        command:
+        - sh
+        - -c
+        - until pg_isready -h payments-db -p 5432 -U postgres; do echo "waiting for
+          payments-db..."; sleep 2; done
+      containers:
+      - name: payments-api
+        image: docker.io/moyle123/payments-api:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8083
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: payments-api
+        - name: DATABASE_URL
+          value: postgresql://postgres:password@payments-db:5432/payments
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8083
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments-api
+  namespace: scenario-01
+  labels:
+    service: payments-api
+spec:
+  type: ClusterIP
+  selector:
+    app: payments-api
+  ports:
+  - port: 8083
+    targetPort: 8083
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pricing-service
+  namespace: scenario-01
+  labels:
+    service: pricing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pricing-service
+  template:
+    metadata:
+      labels:
+        app: pricing-service
+        service: pricing-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8097"
+    spec:
+      containers:
+      - name: pricing-service
+        image: docker.io/moyle123/pricing-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8097
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: pricing-service
+        - name: DISCOUNT_SERVICE_URL
+          value: http://discount-service:8098
+        - name: TAX_SERVICE_URL
+          value: http://tax-service:8112
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        - name: REDIS_URL
+          value: redis://redis:6379/4
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8097
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pricing-service
+  namespace: scenario-01
+  labels:
+    service: pricing-service
+spec:
+  type: ClusterIP
+  selector:
+    app: pricing-service
+  ports:
+  - port: 8097
+    targetPort: 8097
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: processing-service
+  namespace: scenario-01
+  labels:
+    service: processing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: processing-service
+  template:
+    metadata:
+      labels:
+        app: processing-service
+        service: processing-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8094"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: processing-service
+        image: docker.io/moyle123/processing-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8094
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: processing-service
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8094
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: processing-service
+  namespace: scenario-01
+  labels:
+    service: processing-service
+spec:
+  type: ClusterIP
+  selector:
+    app: processing-service
+  ports:
+  - port: 8094
+    targetPort: 8094
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: profile-service
+  namespace: scenario-01
+  labels:
+    service: profile-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: profile-service
+  template:
+    metadata:
+      labels:
+        app: profile-service
+        service: profile-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8090"
+    spec:
+      containers:
+      - name: profile-service
+        image: docker.io/moyle123/profile-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8090
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: profile-service
+        - name: USER_SERVICE_URL
+          value: http://user-service:8099
+        - name: MEDIA_SERVICE_URL
+          value: http://media-service:8114
+        - name: LOYALTY_SERVICE_URL
+          value: http://loyalty-service:8104
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8090
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: profile-service
+  namespace: scenario-01
+  labels:
+    service: profile-service
+spec:
+  type: ClusterIP
+  selector:
+    app: profile-service
+  ports:
+  - port: 8090
+    targetPort: 8090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ranking-service
+  namespace: scenario-01
+  labels:
+    service: ranking-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ranking-service
+  template:
+    metadata:
+      labels:
+        app: ranking-service
+        service: ranking-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8089"
+    spec:
+      containers:
+      - name: ranking-service
+        image: docker.io/moyle123/ranking-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8089
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: ranking-service
+        - name: PROFILE_SERVICE_URL
+          value: http://profile-service:8090
+        - name: ANALYTICS_SERVICE_URL
+          value: http://analytics-service:8107
+        - name: RECOMMENDATION_SERVICE_URL
+          value: http://recommendation-service:8095
+        - name: REDIS_URL
+          value: redis://redis:6379/2
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8089
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ranking-service
+  namespace: scenario-01
+  labels:
+    service: ranking-service
+spec:
+  type: ClusterIP
+  selector:
+    app: ranking-service
+  ports:
+  - port: 8089
+    targetPort: 8089
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recommendation-service
+  namespace: scenario-01
+  labels:
+    service: recommendation-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recommendation-service
+  template:
+    metadata:
+      labels:
+        app: recommendation-service
+        service: recommendation-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8095"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: recommendation-service
+        image: docker.io/moyle123/recommendation-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8095
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: recommendation-service
+        - name: ANALYTICS_SERVICE_URL
+          value: http://analytics-service:8107
+        - name: DELIVERY_SERVICE_URL
+          value: http://delivery-service:8096
+        - name: USER_SERVICE_URL
+          value: http://user-service:8099
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        - name: REDIS_URL
+          value: redis://redis:6379/3
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8095
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendation-service
+  namespace: scenario-01
+  labels:
+    service: recommendation-service
+spec:
+  type: ClusterIP
+  selector:
+    app: recommendation-service
+  ports:
+  - port: 8095
+    targetPort: 8095
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting-service
+  namespace: scenario-01
+  labels:
+    service: reporting-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reporting-service
+  template:
+    metadata:
+      labels:
+        app: reporting-service
+        service: reporting-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8110"
+    spec:
+      containers:
+      - name: reporting-service
+        image: docker.io/moyle123/reporting-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8110
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: reporting-service
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8110
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reporting-service
+  namespace: scenario-01
+  labels:
+    service: reporting-service
+spec:
+  type: ClusterIP
+  selector:
+    app: reporting-service
+  ports:
+  - port: 8110
+    targetPort: 8110
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-service
+  namespace: scenario-01
+  labels:
+    service: review-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: review-service
+  template:
+    metadata:
+      labels:
+        app: review-service
+        service: review-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8103"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: review-service
+        image: docker.io/moyle123/review-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8103
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: review-service
+        - name: RECOMMENDATION_SERVICE_URL
+          value: http://recommendation-service:8095
+        - name: USER_SERVICE_URL
+          value: http://user-service:8099
+        - name: MEDIA_SERVICE_URL
+          value: http://media-service:8114
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8103
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: review-service
+  namespace: scenario-01
+  labels:
+    service: review-service
+spec:
+  type: ClusterIP
+  selector:
+    app: review-service
+  ports:
+  - port: 8103
+    targetPort: 8103
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-service
+  namespace: scenario-01
+  labels:
+    service: search-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: search-service
+  template:
+    metadata:
+      labels:
+        app: search-service
+        service: search-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8088"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: search-service
+        image: docker.io/moyle123/search-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8088
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: search-service
+        - name: RANKING_SERVICE_URL
+          value: http://ranking-service:8089
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        - name: ANALYTICS_SERVICE_URL
+          value: http://analytics-service:8107
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8088
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: search-service
+  namespace: scenario-01
+  labels:
+    service: search-service
+spec:
+  type: ClusterIP
+  selector:
+    app: search-service
+  ports:
+  - port: 8088
+    targetPort: 8088
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: session-service
+  namespace: scenario-01
+  labels:
+    service: session-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: session-service
+  template:
+    metadata:
+      labels:
+        app: session-service
+        service: session-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8106"
+    spec:
+      containers:
+      - name: session-service
+        image: docker.io/moyle123/session-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8106
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: session-service
+        - name: REDIS_URL
+          value: redis://redis:6379/7
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8106
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: session-service
+  namespace: scenario-01
+  labels:
+    service: session-service
+spec:
+  type: ClusterIP
+  selector:
+    app: session-service
+  ports:
+  - port: 8106
+    targetPort: 8106
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shipping-service
+  namespace: scenario-01
+  labels:
+    service: shipping-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shipping-service
+  template:
+    metadata:
+      labels:
+        app: shipping-service
+        service: shipping-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8087"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: shipping-service
+        image: docker.io/moyle123/shipping-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8087
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: shipping-service
+        - name: WAREHOUSE_SERVICE_URL
+          value: http://warehouse-service:8113
+        - name: NOTIFICATION_SERVICE_URL
+          value: http://notification-service:8100
+        - name: EMAIL_SERVICE_URL
+          value: http://email-service:8108
+        - name: ANALYTICS_SERVICE_URL
+          value: http://analytics-service:8107
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8087
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shipping-service
+  namespace: scenario-01
+  labels:
+    service: shipping-service
+spec:
+  type: ClusterIP
+  selector:
+    app: shipping-service
+  ports:
+  - port: 8087
+    targetPort: 8087
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-service
+  namespace: scenario-01
+  labels:
+    service: tax-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-service
+  template:
+    metadata:
+      labels:
+        app: tax-service
+        service: tax-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8112"
+    spec:
+      containers:
+      - name: tax-service
+        image: docker.io/moyle123/tax-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8112
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8112
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: tax-service
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-service
+  namespace: scenario-01
+  labels:
+    service: tax-service
+spec:
+  type: ClusterIP
+  selector:
+    app: tax-service
+  ports:
+  - port: 8112
+    targetPort: 8112
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: scenario-01
+  labels:
+    service: user-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+        service: user-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8099"
+    spec:
+      containers:
+      - name: user-service
+        image: docker.io/moyle123/user-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8099
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: user-service
+        - name: CACHE_SERVICE_URL
+          value: http://cache-service:8109
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8099
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: scenario-01
+  labels:
+    service: user-service
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+  - port: 8099
+    targetPort: 8099
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: warehouse-service
+  namespace: scenario-01
+  labels:
+    service: warehouse-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: warehouse-service
+  template:
+    metadata:
+      labels:
+        app: warehouse-service
+        service: warehouse-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8113"
+    spec:
+      initContainers:
+      - name: wait-for-kafka
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
+      containers:
+      - name: warehouse-service
+        image: docker.io/moyle123/warehouse-service:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8113
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: warehouse-service
+        - name: KAFKA_BROKERS
+          value: kafka:9092
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8113
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          failureThreshold: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: warehouse-service
+  namespace: scenario-01
+  labels:
+    service: warehouse-service
+spec:
+  type: ClusterIP
+  selector:
+    app: warehouse-service
+  ports:
+  - port: 8113
+    targetPort: 8113

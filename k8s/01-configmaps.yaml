@@ -1,0 +1,2040 @@
+---
+# ── Grafana dashboard ──────────────────────────────────────────────────────────
+# Loaded into the shared Grafana in the monitoring namespace by its
+# grafana-sc-dashboard sidecar, which watches ALL namespaces for ConfigMaps
+# labeled grafana_dashboard=1. Uses the "Prometheus" datasource already
+# provisioned there (pointed at kube-prometheus-stack-prometheus.monitoring).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard
+  namespace: scenario-01
+  labels:
+    grafana_dashboard: "1"
+data:
+  scenario-01.json: |
+    {
+      "__inputs": [],
+      "__requires": [],
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "id": 1,
+          "title": "\ud83c\udfe5 Platform Health",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "collapsed": false
+        },
+        {
+          "id": 2,
+          "title": "Checkout Success Rate",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 0,
+            "y": 1
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 95
+                  },
+                  {
+                    "color": "green",
+                    "value": 99
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"checkout\",status=~\"2..\"}[1m])) / sum(rate(http_requests_total{job=\"checkout\"}[1m]))",
+              "legendFormat": "Checkout Success Rate",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Platform Error Rate",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 4,
+            "y": 1
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "expr": "100 * sum(rate(http_requests_total{status=~\"5..\"}[1m])) / sum(rate(http_requests_total[1m]))",
+              "legendFormat": "Platform Error Rate",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "payments-api p95 Latency",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 1
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 500
+                  },
+                  {
+                    "color": "red",
+                    "value": 1000
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"payments-api\"}[1m])) by (le)) * 1000",
+              "legendFormat": "payments-api p95 Latency",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "DB Query Duration (avg ms)",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 1
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 200
+                  },
+                  {
+                    "color": "red",
+                    "value": 1000
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "expr": "pg_stat_activity_max_tx_duration{datname=\"payments\"} * 1000",
+              "legendFormat": "DB Query Duration (avg ms)",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "DB Active Connections",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 16,
+            "y": 1
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "expr": "pg_stat_database_numbackends{datname=\"payments\"}",
+              "legendFormat": "DB Active Connections",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Redis Memory Used",
+          "type": "stat",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 20,
+            "y": 1
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "mbytes",
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 400
+                  },
+                  {
+                    "color": "red",
+                    "value": 480
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "orientation": "auto",
+            "textMode": "auto",
+            "colorMode": "background"
+          },
+          "targets": [
+            {
+              "expr": "redis_memory_used_bytes / 1024 / 1024",
+              "legendFormat": "Redis Memory Used",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "\ud83d\udcca Request Rate \u2014 All Services",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 5
+          },
+          "collapsed": false
+        },
+        {
+          "id": 9,
+          "title": "Request Rate \u2014 All Services (req/s)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 6
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"frontend\"}[1m]))",
+              "legendFormat": "frontend",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"api-gateway\"}[1m]))",
+              "legendFormat": "api-gateway",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"checkout\"}[1m]))",
+              "legendFormat": "checkout",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"payments-api\"}[1m]))",
+              "legendFormat": "payments-api",
+              "refId": "D"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"auth-service\"}[1m]))",
+              "legendFormat": "auth-service",
+              "refId": "E"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"orders-service\"}[1m]))",
+              "legendFormat": "orders-service",
+              "refId": "F"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"inventory-service\"}[1m]))",
+              "legendFormat": "inventory-service",
+              "refId": "G"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"shipping-service\"}[1m]))",
+              "legendFormat": "shipping-service",
+              "refId": "H"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"search-service\"}[1m]))",
+              "legendFormat": "search-service",
+              "refId": "I"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"ranking-service\"}[1m]))",
+              "legendFormat": "ranking-service",
+              "refId": "J"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"profile-service\"}[1m]))",
+              "legendFormat": "profile-service",
+              "refId": "K"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"billing-service\"}[1m]))",
+              "legendFormat": "billing-service",
+              "refId": "L"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"payment-adapter\"}[1m]))",
+              "legendFormat": "payment-adapter",
+              "refId": "M"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"ingest-service\"}[1m]))",
+              "legendFormat": "ingest-service",
+              "refId": "N"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"processing-service\"}[1m]))",
+              "legendFormat": "processing-service",
+              "refId": "O"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"recommendation-service\"}[1m]))",
+              "legendFormat": "recommendation-service",
+              "refId": "P"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"delivery-service\"}[1m]))",
+              "legendFormat": "delivery-service",
+              "refId": "Q"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"pricing-service\"}[1m]))",
+              "legendFormat": "pricing-service",
+              "refId": "R"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"discount-service\"}[1m]))",
+              "legendFormat": "discount-service",
+              "refId": "S"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"user-service\"}[1m]))",
+              "legendFormat": "user-service",
+              "refId": "T"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"notification-service\"}[1m]))",
+              "legendFormat": "notification-service",
+              "refId": "U"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"cart-service\"}[1m]))",
+              "legendFormat": "cart-service",
+              "refId": "V"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"catalog-service\"}[1m]))",
+              "legendFormat": "catalog-service",
+              "refId": "W"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"review-service\"}[1m]))",
+              "legendFormat": "review-service",
+              "refId": "X"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"loyalty-service\"}[1m]))",
+              "legendFormat": "loyalty-service",
+              "refId": "Y"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"audit-service\"}[1m]))",
+              "legendFormat": "audit-service",
+              "refId": "Z"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"session-service\"}[1m]))",
+              "legendFormat": "session-service",
+              "refId": "["
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"analytics-service\"}[1m]))",
+              "legendFormat": "analytics-service",
+              "refId": "\\"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"email-service\"}[1m]))",
+              "legendFormat": "email-service",
+              "refId": "]"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"cache-service\"}[1m]))",
+              "legendFormat": "cache-service",
+              "refId": "^"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"reporting-service\"}[1m]))",
+              "legendFormat": "reporting-service",
+              "refId": "_"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"fraud-detection\"}[1m]))",
+              "legendFormat": "fraud-detection",
+              "refId": "`"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"tax-service\"}[1m]))",
+              "legendFormat": "tax-service",
+              "refId": "a"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"warehouse-service\"}[1m]))",
+              "legendFormat": "warehouse-service",
+              "refId": "b"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"media-service\"}[1m]))",
+              "legendFormat": "media-service",
+              "refId": "c"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"external-payment-api\"}[1m]))",
+              "legendFormat": "external-payment-api",
+              "refId": "d"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "title": "\ud83d\udd34 Error Rates by Flow",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 14
+          },
+          "collapsed": false
+        },
+        {
+          "id": 11,
+          "title": "Error Rate \u2014 Checkout Pipeline (%)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 15
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"frontend\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"frontend\"}[1m]))",
+              "legendFormat": "frontend",
+              "refId": "A"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"api-gateway\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"api-gateway\"}[1m]))",
+              "legendFormat": "api-gateway",
+              "refId": "B"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"checkout\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"checkout\"}[1m]))",
+              "legendFormat": "checkout",
+              "refId": "C"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"payments-api\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"payments-api\"}[1m]))",
+              "legendFormat": "payments-api",
+              "refId": "D"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"billing-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"billing-service\"}[1m]))",
+              "legendFormat": "billing-service",
+              "refId": "E"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"payment-adapter\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"payment-adapter\"}[1m]))",
+              "legendFormat": "payment-adapter",
+              "refId": "F"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"pricing-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"pricing-service\"}[1m]))",
+              "legendFormat": "pricing-service",
+              "refId": "G"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"fraud-detection\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"fraud-detection\"}[1m]))",
+              "legendFormat": "fraud-detection",
+              "refId": "H"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "title": "Error Rate \u2014 Search, Catalog & Auth (%)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 15
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"search-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"search-service\"}[1m]))",
+              "legendFormat": "search-service",
+              "refId": "A"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"ranking-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"ranking-service\"}[1m]))",
+              "legendFormat": "ranking-service",
+              "refId": "B"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"catalog-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"catalog-service\"}[1m]))",
+              "legendFormat": "catalog-service",
+              "refId": "C"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"review-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"review-service\"}[1m]))",
+              "legendFormat": "review-service",
+              "refId": "D"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"recommendation-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"recommendation-service\"}[1m]))",
+              "legendFormat": "recommendation-service",
+              "refId": "E"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"analytics-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"analytics-service\"}[1m]))",
+              "legendFormat": "analytics-service",
+              "refId": "F"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"reporting-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"reporting-service\"}[1m]))",
+              "legendFormat": "reporting-service",
+              "refId": "G"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"auth-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"auth-service\"}[1m]))",
+              "legendFormat": "auth-service",
+              "refId": "H"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"session-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"session-service\"}[1m]))",
+              "legendFormat": "session-service",
+              "refId": "I"
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "title": "\u23f1 Latency p95 by Flow",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 23
+          },
+          "collapsed": false
+        },
+        {
+          "id": 14,
+          "title": "p95 Latency \u2014 Checkout Flow (ms)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"checkout\"}[1m])) by (le)) * 1000",
+              "legendFormat": "checkout",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"payments-api\"}[1m])) by (le)) * 1000",
+              "legendFormat": "payments-api",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"billing-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "billing-service",
+              "refId": "C"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"payment-adapter\"}[1m])) by (le)) * 1000",
+              "legendFormat": "payment-adapter",
+              "refId": "D"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"pricing-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "pricing-service",
+              "refId": "E"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"discount-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "discount-service",
+              "refId": "F"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"fraud-detection\"}[1m])) by (le)) * 1000",
+              "legendFormat": "fraud-detection",
+              "refId": "G"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"tax-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "tax-service",
+              "refId": "H"
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "title": "p95 Latency \u2014 Deep Chain: Catalog\u2192Review\u2192Rec\u2192Analytics\u2192Reporting (ms)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 24
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"api-gateway\"}[1m])) by (le)) * 1000",
+              "legendFormat": "api-gateway",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalog-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "catalog-service",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"review-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "review-service",
+              "refId": "C"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"recommendation-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "recommendation-service",
+              "refId": "D"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"analytics-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "analytics-service",
+              "refId": "E"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"reporting-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "reporting-service",
+              "refId": "F"
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "title": "\ud83d\udd10 Auth \u00b7 \ud83d\udd0d Search \u00b7 \ud83d\udce6 Orders Flows",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 32
+          },
+          "collapsed": false
+        },
+        {
+          "id": 17,
+          "title": "Auth Flow \u2014 Request Rate (req/s)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 33
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"auth-service\"}[1m]))",
+              "legendFormat": "auth-service",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"session-service\"}[1m]))",
+              "legendFormat": "session-service",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"user-service\"}[1m]))",
+              "legendFormat": "user-service",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "title": "Search Flow \u2014 Request Rate (req/s)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 33
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"search-service\"}[1m]))",
+              "legendFormat": "search-service",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"ranking-service\"}[1m]))",
+              "legendFormat": "ranking-service",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"profile-service\"}[1m]))",
+              "legendFormat": "profile-service",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"user-service\"}[1m]))",
+              "legendFormat": "user-service",
+              "refId": "D"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"cache-service\"}[1m]))",
+              "legendFormat": "cache-service",
+              "refId": "E"
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "title": "Order Pipeline \u2014 Request Rate (req/s)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 33
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"orders-service\"}[1m]))",
+              "legendFormat": "orders-service",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"inventory-service\"}[1m]))",
+              "legendFormat": "inventory-service",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"shipping-service\"}[1m]))",
+              "legendFormat": "shipping-service",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"warehouse-service\"}[1m]))",
+              "legendFormat": "warehouse-service",
+              "refId": "D"
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "title": "\ud83d\udcb3 Billing \u00b7 \ud83d\udce1 Streaming \u00b7 \ud83d\udd14 Support Services",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 41
+          },
+          "collapsed": false
+        },
+        {
+          "id": 21,
+          "title": "Billing Flow \u2014 Request Rate (req/s)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 42
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"billing-service\"}[1m]))",
+              "legendFormat": "billing-service",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"payment-adapter\"}[1m]))",
+              "legendFormat": "payment-adapter",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"external-payment-api\"}[1m]))",
+              "legendFormat": "external-payment-api",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"tax-service\"}[1m]))",
+              "legendFormat": "tax-service",
+              "refId": "D"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"fraud-detection\"}[1m]))",
+              "legendFormat": "fraud-detection",
+              "refId": "E"
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "title": "Streaming Flow \u2014 Request Rate (req/s)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 42
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"ingest-service\"}[1m]))",
+              "legendFormat": "ingest-service",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"processing-service\"}[1m]))",
+              "legendFormat": "processing-service",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"recommendation-service\"}[1m]))",
+              "legendFormat": "recommendation-service",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"delivery-service\"}[1m]))",
+              "legendFormat": "delivery-service",
+              "refId": "D"
+            }
+          ]
+        },
+        {
+          "id": 23,
+          "title": "Support Services \u2014 Request Rate (req/s)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 42
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"notification-service\"}[1m]))",
+              "legendFormat": "notification-service",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"email-service\"}[1m]))",
+              "legendFormat": "email-service",
+              "refId": "B"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"audit-service\"}[1m]))",
+              "legendFormat": "audit-service",
+              "refId": "C"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"loyalty-service\"}[1m]))",
+              "legendFormat": "loyalty-service",
+              "refId": "D"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"cart-service\"}[1m]))",
+              "legendFormat": "cart-service",
+              "refId": "E"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"media-service\"}[1m]))",
+              "legendFormat": "media-service",
+              "refId": "F"
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "title": "\ud83d\uddc4 Database \u00b7 Redis \u00b7 Infrastructure",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 50
+          },
+          "collapsed": false
+        },
+        {
+          "id": 25,
+          "title": "DB Query Duration (ms)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 51
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "rate(db_query_duration_seconds_sum{job=\"payments-api\"}[1m]) / rate(db_query_duration_seconds_count{job=\"payments-api\"}[1m]) * 1000",
+              "legendFormat": "avg query ms",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"payments-api\"}[1m])) by (le)) * 1000",
+              "legendFormat": "payments-api p95",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(db_query_duration_seconds_bucket{job=\"payments-api\"}[1m])) by (le)) * 1000",
+              "legendFormat": "p99 query ms",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "title": "DB Connections & Pool",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 51
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "pg_stat_database_numbackends{datname=\"payments\"}",
+              "legendFormat": "active connections",
+              "refId": "A"
+            },
+            {
+              "expr": "db_pool_connections{job=\"payments-api\"}",
+              "legendFormat": "pool size",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "id": 27,
+          "title": "Redis",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 51
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "redis_connected_clients",
+              "legendFormat": "connected clients",
+              "refId": "A"
+            },
+            {
+              "expr": "redis_memory_used_bytes / 1024 / 1024",
+              "legendFormat": "memory MB",
+              "refId": "B"
+            },
+            {
+              "expr": "rate(redis_commands_processed_total[1m])",
+              "legendFormat": "commands/s",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "id": 28,
+          "title": "\ud83d\udcc8 Latency Percentiles \u2014 Checkout & payments-api",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 59
+          },
+          "collapsed": false
+        },
+        {
+          "id": 29,
+          "title": "Checkout Latency Percentiles (ms)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 60
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"checkout\"}[1m])) by (le)) * 1000",
+              "legendFormat": "checkout p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"checkout\"}[1m])) by (le)) * 1000",
+              "legendFormat": "checkout p95",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"checkout\"}[1m])) by (le)) * 1000",
+              "legendFormat": "checkout p99",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "title": "payments-api Latency Percentiles (ms)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 60
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"payments-api\"}[1m])) by (le)) * 1000",
+              "legendFormat": "payments-api p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"payments-api\"}[1m])) by (le)) * 1000",
+              "legendFormat": "payments-api p95",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"payments-api\"}[1m])) by (le)) * 1000",
+              "legendFormat": "payments-api p99",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "title": "\ud83c\udf21 Error Rate \u2014 All Services",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 68
+          },
+          "collapsed": false
+        },
+        {
+          "id": 32,
+          "title": "Error Rate \u2014 All Services (%)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 69
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"frontend\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"frontend\"}[1m]))",
+              "legendFormat": "frontend",
+              "refId": "A"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"api-gateway\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"api-gateway\"}[1m]))",
+              "legendFormat": "api-gateway",
+              "refId": "B"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"checkout\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"checkout\"}[1m]))",
+              "legendFormat": "checkout",
+              "refId": "C"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"payments-api\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"payments-api\"}[1m]))",
+              "legendFormat": "payments-api",
+              "refId": "D"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"auth-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"auth-service\"}[1m]))",
+              "legendFormat": "auth-service",
+              "refId": "E"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"orders-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"orders-service\"}[1m]))",
+              "legendFormat": "orders-service",
+              "refId": "F"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"inventory-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"inventory-service\"}[1m]))",
+              "legendFormat": "inventory-service",
+              "refId": "G"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"shipping-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"shipping-service\"}[1m]))",
+              "legendFormat": "shipping-service",
+              "refId": "H"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"search-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"search-service\"}[1m]))",
+              "legendFormat": "search-service",
+              "refId": "I"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"ranking-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"ranking-service\"}[1m]))",
+              "legendFormat": "ranking-service",
+              "refId": "J"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"profile-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"profile-service\"}[1m]))",
+              "legendFormat": "profile-service",
+              "refId": "K"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"billing-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"billing-service\"}[1m]))",
+              "legendFormat": "billing-service",
+              "refId": "L"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"payment-adapter\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"payment-adapter\"}[1m]))",
+              "legendFormat": "payment-adapter",
+              "refId": "M"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"ingest-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"ingest-service\"}[1m]))",
+              "legendFormat": "ingest-service",
+              "refId": "N"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"processing-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"processing-service\"}[1m]))",
+              "legendFormat": "processing-service",
+              "refId": "O"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"recommendation-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"recommendation-service\"}[1m]))",
+              "legendFormat": "recommendation-service",
+              "refId": "P"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"delivery-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"delivery-service\"}[1m]))",
+              "legendFormat": "delivery-service",
+              "refId": "Q"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"pricing-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"pricing-service\"}[1m]))",
+              "legendFormat": "pricing-service",
+              "refId": "R"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"discount-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"discount-service\"}[1m]))",
+              "legendFormat": "discount-service",
+              "refId": "S"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"user-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"user-service\"}[1m]))",
+              "legendFormat": "user-service",
+              "refId": "T"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"notification-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"notification-service\"}[1m]))",
+              "legendFormat": "notification-service",
+              "refId": "U"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"cart-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"cart-service\"}[1m]))",
+              "legendFormat": "cart-service",
+              "refId": "V"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"catalog-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"catalog-service\"}[1m]))",
+              "legendFormat": "catalog-service",
+              "refId": "W"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"review-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"review-service\"}[1m]))",
+              "legendFormat": "review-service",
+              "refId": "X"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"loyalty-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"loyalty-service\"}[1m]))",
+              "legendFormat": "loyalty-service",
+              "refId": "Y"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"audit-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"audit-service\"}[1m]))",
+              "legendFormat": "audit-service",
+              "refId": "Z"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"session-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"session-service\"}[1m]))",
+              "legendFormat": "session-service",
+              "refId": "["
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"analytics-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"analytics-service\"}[1m]))",
+              "legendFormat": "analytics-service",
+              "refId": "\\"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"email-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"email-service\"}[1m]))",
+              "legendFormat": "email-service",
+              "refId": "]"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"cache-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"cache-service\"}[1m]))",
+              "legendFormat": "cache-service",
+              "refId": "^"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"reporting-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"reporting-service\"}[1m]))",
+              "legendFormat": "reporting-service",
+              "refId": "_"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"fraud-detection\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"fraud-detection\"}[1m]))",
+              "legendFormat": "fraud-detection",
+              "refId": "`"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"tax-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"tax-service\"}[1m]))",
+              "legendFormat": "tax-service",
+              "refId": "a"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"warehouse-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"warehouse-service\"}[1m]))",
+              "legendFormat": "warehouse-service",
+              "refId": "b"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"media-service\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"media-service\"}[1m]))",
+              "legendFormat": "media-service",
+              "refId": "c"
+            },
+            {
+              "expr": "100 * sum(rate(http_requests_total{job=\"external-payment-api\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{job=\"external-payment-api\"}[1m]))",
+              "legendFormat": "external-payment-api",
+              "refId": "d"
+            }
+          ]
+        },
+        {
+          "id": 33,
+          "title": "\u23f1 p95 Latency \u2014 All Services",
+          "type": "row",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 77
+          },
+          "collapsed": false
+        },
+        {
+          "id": 34,
+          "title": "p95 Latency \u2014 All Services (ms)",
+          "type": "timeseries",
+          "datasource": "Prometheus",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 78
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "lineWidth": 1,
+                "fillOpacity": 5
+              }
+            }
+          },
+          "options": {
+            "tooltip": {
+              "mode": "multi"
+            },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom"
+            }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"frontend\"}[1m])) by (le)) * 1000",
+              "legendFormat": "frontend",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"api-gateway\"}[1m])) by (le)) * 1000",
+              "legendFormat": "api-gateway",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"checkout\"}[1m])) by (le)) * 1000",
+              "legendFormat": "checkout",
+              "refId": "C"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"payments-api\"}[1m])) by (le)) * 1000",
+              "legendFormat": "payments-api",
+              "refId": "D"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"auth-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "auth-service",
+              "refId": "E"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"orders-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "orders-service",
+              "refId": "F"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"inventory-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "inventory-service",
+              "refId": "G"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"shipping-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "shipping-service",
+              "refId": "H"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"search-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "search-service",
+              "refId": "I"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"ranking-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "ranking-service",
+              "refId": "J"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"profile-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "profile-service",
+              "refId": "K"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"billing-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "billing-service",
+              "refId": "L"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"payment-adapter\"}[1m])) by (le)) * 1000",
+              "legendFormat": "payment-adapter",
+              "refId": "M"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"ingest-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "ingest-service",
+              "refId": "N"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"processing-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "processing-service",
+              "refId": "O"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"recommendation-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "recommendation-service",
+              "refId": "P"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"delivery-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "delivery-service",
+              "refId": "Q"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"pricing-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "pricing-service",
+              "refId": "R"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"discount-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "discount-service",
+              "refId": "S"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"user-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "user-service",
+              "refId": "T"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"notification-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "notification-service",
+              "refId": "U"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"cart-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "cart-service",
+              "refId": "V"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalog-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "catalog-service",
+              "refId": "W"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"review-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "review-service",
+              "refId": "X"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"loyalty-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "loyalty-service",
+              "refId": "Y"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"audit-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "audit-service",
+              "refId": "Z"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"session-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "session-service",
+              "refId": "["
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"analytics-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "analytics-service",
+              "refId": "\\"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"email-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "email-service",
+              "refId": "]"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"cache-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "cache-service",
+              "refId": "^"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"reporting-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "reporting-service",
+              "refId": "_"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"fraud-detection\"}[1m])) by (le)) * 1000",
+              "legendFormat": "fraud-detection",
+              "refId": "`"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"tax-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "tax-service",
+              "refId": "a"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"warehouse-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "warehouse-service",
+              "refId": "b"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"media-service\"}[1m])) by (le)) * 1000",
+              "legendFormat": "media-service",
+              "refId": "c"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"external-payment-api\"}[1m])) by (le)) * 1000",
+              "legendFormat": "external-payment-api",
+              "refId": "d"
+            }
+          ]
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 38,
+      "tags": [
+        "oncall-eval",
+        "scenario-01"
+      ],
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Scenario 01 \u2014 Full Platform (36 services)",
+      "uid": "scenario-01-checkout",
+      "version": 2
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payments-db-init
+  namespace: scenario-01
+data:
+  init.sql: |
+    -- payments database initialization
+
+    CREATE TABLE IF NOT EXISTS payments (
+        id          SERIAL PRIMARY KEY,
+        checkout_id VARCHAR(64)    NOT NULL,
+        amount      DECIMAL(10,2)  NOT NULL,
+        status      VARCHAR(20)    NOT NULL DEFAULT 'pending',
+        created_at  TIMESTAMP      NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_payments_checkout_id ON payments(checkout_id);
+
+    -- Control table used by inject/restore scripts
+    CREATE TABLE IF NOT EXISTS system_config (
+        key   VARCHAR(50) PRIMARY KEY,
+        value VARCHAR(100) NOT NULL
+    );
+
+    -- Default: realistic fast queries (~20ms)
+    INSERT INTO system_config (key, value) VALUES ('query_delay_ms', '20')
+    ON CONFLICT (key) DO NOTHING;
+
+    -- Parameterised lookup function — delay is read from system_config at call time
+    CREATE OR REPLACE FUNCTION process_payment(p_checkout_id VARCHAR, p_amount NUMERIC)
+    RETURNS TABLE(
+        payment_id  INT,
+        checkout_id VARCHAR,
+        status      VARCHAR,
+        latency_ms  NUMERIC
+    ) AS $$
+    DECLARE
+        v_delay_ms  INT;
+        v_start     TIMESTAMPTZ;
+        v_id        INT;
+    BEGIN
+        -- Read current configured delay
+        SELECT CAST(value AS INT)
+          INTO v_delay_ms
+          FROM system_config
+         WHERE key = 'query_delay_ms';
+
+        v_start := clock_timestamp();
+
+        -- Simulate query work + configured latency
+        PERFORM pg_sleep(v_delay_ms / 1000.0);
+
+        -- Insert payment record
+        INSERT INTO payments (checkout_id, amount, status)
+        VALUES (p_checkout_id, p_amount, 'completed')
+        RETURNING id INTO v_id;
+
+        RETURN QUERY
+        SELECT
+            v_id,
+            p_checkout_id,
+            'completed'::VARCHAR,
+            ROUND(EXTRACT(EPOCH FROM (clock_timestamp() - v_start)) * 1000, 2);
+    END;
+    $$ LANGUAGE plpgsql;
+
+    -- Seed historical payments data
+    INSERT INTO payments (checkout_id, amount, status, created_at)
+    SELECT
+        'checkout-seed-' || gs,
+        ROUND((random() * 490 + 10)::NUMERIC, 2),
+        'completed',
+        NOW() - (random() * INTERVAL '30 days')
+    FROM generate_series(1, 5000) gs;

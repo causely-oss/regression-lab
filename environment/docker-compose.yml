@@ -1,0 +1,685 @@
+name: scenario-01
+
+services:
+
+  # -- Application services ---------------------------------------------------
+
+  analytics-service:
+    build: ./services/analytics-service
+    ports:
+      - "8107:8107"
+    environment:
+      REPORTING_SERVICE_URL: http://reporting-service:8110
+      CACHE_SERVICE_URL: http://cache-service:8109
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8107/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "8081:8081"
+    environment:
+      CHECKOUT_URL: http://checkout:8082
+      AUTH_SERVICE_URL: http://auth-service:8084
+      CART_SERVICE_URL: http://cart-service:8101
+      CATALOG_SERVICE_URL: http://catalog-service:8102
+      ORDERS_SERVICE_URL: http://orders-service:8085
+      PROFILE_SERVICE_URL: http://profile-service:8090
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  audit-service:
+    build: ./services/audit-service
+    ports:
+      - "8105:8105"
+    environment:
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8105/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "8084:8084"
+    environment:
+      SESSION_SERVICE_URL: http://session-service:8106
+      USER_SERVICE_URL: http://user-service:8099
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8084/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  billing-service:
+    build: ./services/billing-service
+    ports:
+      - "8091:8091"
+    environment:
+      PAYMENT_ADAPTER_URL: http://payment-adapter:8092
+      TAX_SERVICE_URL: http://tax-service:8112
+      FRAUD_DETECTION_URL: http://fraud-detection:8111
+      NOTIFICATION_SERVICE_URL: http://notification-service:8100
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8091/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cache-service:
+    build: ./services/cache-service
+    ports:
+      - "8109:8109"
+    environment:
+      REDIS_URL: redis://redis:6379/8
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8109/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cart-service:
+    build: ./services/cart-service
+    ports:
+      - "8101:8101"
+    environment:
+      CATALOG_SERVICE_URL: http://catalog-service:8102
+      PRICING_SERVICE_URL: http://pricing-service:8097
+      SESSION_SERVICE_URL: http://session-service:8106
+      REDIS_URL: redis://redis:6379/5
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8101/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  catalog-service:
+    build: ./services/catalog-service
+    ports:
+      - "8102:8102"
+    environment:
+      REVIEW_SERVICE_URL: http://review-service:8103
+      MEDIA_SERVICE_URL: http://media-service:8114
+      CACHE_SERVICE_URL: http://cache-service:8109
+      PRICING_SERVICE_URL: http://pricing-service:8097
+      INVENTORY_SERVICE_URL: http://inventory-service:8086
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8102/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  checkout:
+    build: ./services/checkout
+    ports:
+      - "8082:8082"
+    environment:
+      PAYMENTS_API_URL: http://payments-api:8083
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BROKERS: kafka:9092
+      PAYMENTS_TIMEOUT_SECONDS: 3.0
+      PRICING_SERVICE_URL: http://pricing-service:8097
+      BILLING_SERVICE_URL: http://billing-service:8091
+      FRAUD_DETECTION_URL: http://fraud-detection:8111
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  delivery-service:
+    build: ./services/delivery-service
+    ports:
+      - "8096:8096"
+    environment:
+      NOTIFICATION_SERVICE_URL: http://notification-service:8100
+      WAREHOUSE_SERVICE_URL: http://warehouse-service:8113
+      EMAIL_SERVICE_URL: http://email-service:8108
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8096/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  discount-service:
+    build: ./services/discount-service
+    ports:
+      - "8098:8098"
+    environment:
+      LOYALTY_SERVICE_URL: http://loyalty-service:8104
+      CACHE_SERVICE_URL: http://cache-service:8109
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8098/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  email-service:
+    build: ./services/email-service
+    ports:
+      - "8108:8108"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8108/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  external-payment-api:
+    build: ./services/external-payment-api
+    ports:
+      - "8115:8115"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8115/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fraud-detection:
+    build: ./services/fraud-detection
+    ports:
+      - "8111:8111"
+    environment:
+      REDIS_URL: redis://redis:6379/9
+      ANALYTICS_SERVICE_URL: http://analytics-service:8107
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8111/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./services/frontend
+    ports:
+      - "8080:8080"
+    environment:
+      API_GATEWAY_URL: http://api-gateway:8081
+      SEARCH_SERVICE_URL: http://search-service:8088
+      PROFILE_SERVICE_URL: http://profile-service:8090
+      INGEST_SERVICE_URL: http://ingest-service:8093
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ingest-service:
+    build: ./services/ingest-service
+    ports:
+      - "8093:8093"
+    environment:
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8093/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  inventory-service:
+    build: ./services/inventory-service
+    ports:
+      - "8086:8086"
+    environment:
+      WAREHOUSE_SERVICE_URL: http://warehouse-service:8113
+      NOTIFICATION_SERVICE_URL: http://notification-service:8100
+      REDIS_URL: redis://redis:6379/1
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8086/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  loyalty-service:
+    build: ./services/loyalty-service
+    ports:
+      - "8104:8104"
+    environment:
+      USER_SERVICE_URL: http://user-service:8099
+      CACHE_SERVICE_URL: http://cache-service:8109
+      REDIS_URL: redis://redis:6379/6
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8104/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  media-service:
+    build: ./services/media-service
+    ports:
+      - "8114:8114"
+    environment:
+      CACHE_SERVICE_URL: http://cache-service:8109
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8114/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "8100:8100"
+    environment:
+      EMAIL_SERVICE_URL: http://email-service:8108
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  orders-service:
+    build: ./services/orders-service
+    ports:
+      - "8085:8085"
+    environment:
+      INVENTORY_SERVICE_URL: http://inventory-service:8086
+      NOTIFICATION_SERVICE_URL: http://notification-service:8100
+      SHIPPING_SERVICE_URL: http://shipping-service:8087
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8085/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  payment-adapter:
+    build: ./services/payment-adapter
+    ports:
+      - "8092:8092"
+    environment:
+      EXTERNAL_PAYMENT_URL: http://external-payment-api:8115
+      NOTIFICATION_SERVICE_URL: http://notification-service:8100
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8092/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  payments-api:
+    build: ./services/payments-api
+    ports:
+      - "8083:8083"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@payments-db:5432/payments
+    depends_on:
+      payments-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8083/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pricing-service:
+    build: ./services/pricing-service
+    ports:
+      - "8097:8097"
+    environment:
+      DISCOUNT_SERVICE_URL: http://discount-service:8098
+      TAX_SERVICE_URL: http://tax-service:8112
+      CACHE_SERVICE_URL: http://cache-service:8109
+      REDIS_URL: redis://redis:6379/4
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8097/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  processing-service:
+    build: ./services/processing-service
+    ports:
+      - "8094:8094"
+    environment:
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8094/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  profile-service:
+    build: ./services/profile-service
+    ports:
+      - "8090:8090"
+    environment:
+      USER_SERVICE_URL: http://user-service:8099
+      MEDIA_SERVICE_URL: http://media-service:8114
+      LOYALTY_SERVICE_URL: http://loyalty-service:8104
+      CACHE_SERVICE_URL: http://cache-service:8109
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ranking-service:
+    build: ./services/ranking-service
+    ports:
+      - "8089:8089"
+    environment:
+      PROFILE_SERVICE_URL: http://profile-service:8090
+      ANALYTICS_SERVICE_URL: http://analytics-service:8107
+      RECOMMENDATION_SERVICE_URL: http://recommendation-service:8095
+      REDIS_URL: redis://redis:6379/2
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8089/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  recommendation-service:
+    build: ./services/recommendation-service
+    ports:
+      - "8095:8095"
+    environment:
+      ANALYTICS_SERVICE_URL: http://analytics-service:8107
+      DELIVERY_SERVICE_URL: http://delivery-service:8096
+      USER_SERVICE_URL: http://user-service:8099
+      CACHE_SERVICE_URL: http://cache-service:8109
+      REDIS_URL: redis://redis:6379/3
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8095/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  reporting-service:
+    build: ./services/reporting-service
+    ports:
+      - "8110:8110"
+    environment:
+      CACHE_SERVICE_URL: http://cache-service:8109
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8110/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  review-service:
+    build: ./services/review-service
+    ports:
+      - "8103:8103"
+    environment:
+      RECOMMENDATION_SERVICE_URL: http://recommendation-service:8095
+      USER_SERVICE_URL: http://user-service:8099
+      MEDIA_SERVICE_URL: http://media-service:8114
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8103/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  search-service:
+    build: ./services/search-service
+    ports:
+      - "8088:8088"
+    environment:
+      RANKING_SERVICE_URL: http://ranking-service:8089
+      CACHE_SERVICE_URL: http://cache-service:8109
+      ANALYTICS_SERVICE_URL: http://analytics-service:8107
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8088/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  session-service:
+    build: ./services/session-service
+    ports:
+      - "8106:8106"
+    environment:
+      REDIS_URL: redis://redis:6379/7
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8106/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  shipping-service:
+    build: ./services/shipping-service
+    ports:
+      - "8087:8087"
+    environment:
+      WAREHOUSE_SERVICE_URL: http://warehouse-service:8113
+      NOTIFICATION_SERVICE_URL: http://notification-service:8100
+      EMAIL_SERVICE_URL: http://email-service:8108
+      ANALYTICS_SERVICE_URL: http://analytics-service:8107
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8087/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  tax-service:
+    build: ./services/tax-service
+    ports:
+      - "8112:8112"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8112/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "8099:8099"
+    environment:
+      CACHE_SERVICE_URL: http://cache-service:8109
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8099/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  warehouse-service:
+    build: ./services/warehouse-service
+    ports:
+      - "8113:8113"
+    environment:
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8113/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -- Data stores ---------------------------------------------------------
+
+payments-db:
+  image: postgres:16-alpine
+  environment:
+    POSTGRES_DB: payments
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: password
+  ports:
+    - "5432:5432"
+  volumes:
+    - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    - payments-db-data:/var/lib/postgresql/data
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U postgres -d payments"]
+    interval: 5s
+    timeout: 3s
+    retries: 10
+
+redis:
+  image: redis:7-alpine
+  ports:
+    - "6379:6379"
+  command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+
+kafka:
+  image: confluentinc/cp-kafka:7.6.0
+  ports:
+    - "9092:9092"
+  environment:
+    KAFKA_NODE_ID: 1
+    KAFKA_PROCESS_ROLES: broker,controller
+    KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+    KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+    KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+    KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+    KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+  healthcheck:
+    test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+    interval: 15s
+    timeout: 10s
+    retries: 10
+
+  # -- Observability --------------------------------------------------------
+
+prometheus:
+  image: prom/prometheus:v2.51.0
+  ports:
+    - "9090:9090"
+  volumes:
+    - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+  command:
+    - "--config.file=/etc/prometheus/prometheus.yml"
+    - "--storage.tsdb.retention.time=1h"
+  depends_on:
+- analytics-service
+- api-gateway
+- audit-service
+- auth-service
+- billing-service
+- cache-service
+- cart-service
+- catalog-service
+- checkout
+- delivery-service
+
+grafana:
+  image: grafana/grafana:10.4.0
+  ports:
+    - "3000:3000"
+  environment:
+    GF_SECURITY_ADMIN_PASSWORD: admin
+    GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/scenario-01.json
+  volumes:
+    - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+    - ./grafana-dashboard.json:/var/lib/grafana/dashboards/scenario-01.json:ro
+    - grafana-data:/var/lib/grafana
+  depends_on:
+    - prometheus
+
+postgres-exporter:
+  image: prometheuscommunity/postgres-exporter:v0.15.0
+  environment:
+    DATA_SOURCE_NAME: "postgresql://postgres:password@payments-db:5432/payments?sslmode=disable"
+  ports:
+    - "9187:9187"
+  depends_on:
+    payments-db:
+      condition: service_healthy
+
+redis-exporter:
+  image: oliver006/redis_exporter:v1.58.0
+  environment:
+    REDIS_ADDR: redis://redis:6379
+  ports:
+    - "9121:9121"
+  depends_on:
+    - redis
+
+volumes:
+  payments-db-data:
+  grafana-data:

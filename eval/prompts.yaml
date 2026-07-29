@@ -1,0 +1,75 @@
+prompts:
+  - id: 1
+    state: healthy
+    fault: null
+    inject_before: null
+    restore_after: null
+    text: "Give me a health summary of the platform. Are any services showing issues?"
+    ground_truth: >
+      All 36 services healthy, no active faults. No service should show elevated
+      error rates or latency above baseline.
+
+  - id: 2
+    state: healthy
+    fault: null
+    inject_before: null
+    restore_after: null
+    text: "Which service currently has the highest p95 latency and what is driving it?"
+    ground_truth: >
+      Baseline variance only. No service should be significantly elevated.
+      Any answer claiming a root cause is a false positive.
+
+  - id: 3
+    state: fault
+    fault: db_latency
+    inject_before: "inject/inject_db_latency.sh"
+    restore_after: null
+    text: "What is causing checkout failures?"
+    ground_truth: >
+      payments-db query latency spike (20ms → 2.8s). The database is the root cause —
+      not checkout or payments-api, which are victims. payments-api error rate ~18%,
+      checkout error rate ~14%.
+
+  - id: 4
+    state: fault
+    fault: db_latency
+    inject_before: null
+    restore_after: "inject/restore_db.sh"
+    text: "payments-api errors have spiked. Identify the root cause and recommend a fix."
+    ground_truth: >
+      payments-db slow queries causing payments-api timeouts. Correct recommendation:
+      check for missing indexes, long-running queries, or recent schema changes on
+      payments-db. Should NOT blame checkout, billing, or Redis.
+
+  - id: 5
+    state: fault
+    fault: deep_chain
+    inject_before: "inject/inject_deep_chain_latency.sh"
+    restore_after: null
+    text: "The product catalog pages are loading very slowly."
+    ground_truth: >
+      recommendation-service latency spike (50ms → 600ms) cascading through 6 hops:
+      frontend → api-gateway → catalog → review → recommendation. Agent should identify
+      recommendation-service as the origin, not the upstream services showing symptoms.
+
+  - id: 6
+    state: fault
+    fault: deep_chain
+    inject_before: null
+    restore_after: null
+    text: "I see elevated latency across multiple services in the catalog flow. What is the origin?"
+    ground_truth: >
+      recommendation-service is the root cause. catalog-service, review-service,
+      analytics-service, and reporting-service show secondary latency and are victims.
+      Agent should NOT blame all 6 services equally.
+
+  - id: 7
+    state: fault
+    fault: deep_chain
+    inject_before: null
+    restore_after: "inject/restore_deep_chain_latency.sh"
+    text: "Frontend /catalog p95 is over 1 second. Walk me through the call chain to find the bottleneck."
+    ground_truth: >
+      recommendation-service (6th hop in chain: catalog→review→recommendation).
+      Evidence: its own p95 jumped from ~50ms to ~600ms while upstream services
+      show proportional but smaller increases consistent with cascading delay.

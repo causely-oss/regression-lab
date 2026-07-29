@@ -1,0 +1,134 @@
+groups:
+  # ── Scenarios 3 & 4: DB latency fault ──────────────────────────────────────
+  # payments-db query_delay_ms: 20 → 2800
+  # Expected: payments-api error ~18%, checkout error ~14%, DB p95 ~2.8s
+  - name: scenario-01.db-latency
+    rules:
+      - alert: CheckoutHighErrorRate
+        expr: >
+          sum(rate(http_requests_total{job="checkout",status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total{job="checkout"}[5m]))
+          > 0.01
+        for: 30s
+        labels:
+          severity: critical
+          flow: checkout
+        annotations:
+          summary: "Checkout 5xx error rate above 1%"
+          description: "checkout error rate is {{ $value | humanizePercentage }}"
+
+      - alert: PaymentsAPIHighErrorRate
+        expr: >
+          sum(rate(http_requests_total{job="payments-api",status=~"5.."}[5m]))
+          /
+          sum(rate(http_requests_total{job="payments-api"}[5m]))
+          > 0.01
+        for: 30s
+        labels:
+          severity: critical
+          flow: checkout
+        annotations:
+          summary: "payments-api 5xx error rate above 1%"
+          description: "payments-api error rate is {{ $value | humanizePercentage }}"
+
+      - alert: PaymentsDBQueryLatencyHigh
+        expr: >
+          histogram_quantile(0.95,
+            sum(rate(db_query_duration_seconds_bucket{job="payments-api"}[5m])) by (le)
+          ) > 0.5
+        for: 30s
+        labels:
+          severity: critical
+          flow: checkout
+        annotations:
+          summary: "payments-db query p95 above 500ms"
+          description: "DB query p95 is {{ $value | humanizeDuration }}"
+
+  # ── Scenarios 5, 6, 7: Deep chain latency fault ────────────────────────────
+  # Root cause: recommendation-service latency: ~50ms → ~600ms
+  # Cascade:    review ~700ms, catalog ~800ms, api-gateway ~900ms, frontend ~1s+
+  - name: scenario-01.deep-chain
+    rules:
+      - alert: RecommendationServiceLatencyHigh
+        expr: >
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="recommendation-service"}[5m])) by (le)
+          ) > 0.5
+        for: 30s
+        labels:
+          severity: critical
+          flow: catalog
+        annotations:
+          summary: "recommendation-service p95 latency above 500ms"
+          description: "recommendation-service p95 is {{ $value | humanizeDuration }}"
+
+      - alert: ReviewServiceLatencyHigh
+        expr: >
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="review-service"}[5m])) by (le)
+          ) > 0.5
+        for: 30s
+        labels:
+          severity: warning
+          flow: catalog
+        annotations:
+          summary: "review-service p95 latency above 500ms"
+          description: "review-service p95 is {{ $value | humanizeDuration }}"
+
+      - alert: CatalogServiceLatencyHigh
+        expr: >
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="catalog-service"}[5m])) by (le)
+          ) > 0.5
+        for: 30s
+        labels:
+          severity: warning
+          flow: catalog
+        annotations:
+          summary: "catalog-service p95 latency above 500ms"
+          description: "catalog-service p95 is {{ $value | humanizeDuration }}"
+
+      - alert: FrontendCatalogLatencyHigh
+        expr: >
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="frontend"}[5m])) by (le)
+          ) > 1.0
+        for: 30s
+        labels:
+          severity: critical
+          flow: catalog
+        annotations:
+          summary: "Frontend p95 latency above 1s"
+          description: "frontend p95 is {{ $value | humanizeDuration }}"
+
+  # ── General: any service ───────────────────────────────────────────────────
+  # Broad rules that fire for all scenarios — useful for prompt 1 (healthy
+  # baseline confirms no alerts) and as supplemental signal during faults.
+  - name: scenario-01.general
+    rules:
+      - alert: ServiceHighErrorRate
+        expr: >
+          (
+            sum by (job) (rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum by (job) (rate(http_requests_total[5m]))
+          ) > 0.01
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} error rate above 1%"
+          description: "{{ $labels.job }} 5xx rate is {{ $value | humanizePercentage }}"
+
+      - alert: ServiceHighLatencyP95
+        expr: >
+          histogram_quantile(0.95,
+            sum by (job, le) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 0.5
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} p95 latency above 500ms"
+          description: "{{ $labels.job }} p95 is {{ $value | humanizeDuration }}"
