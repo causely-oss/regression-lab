@@ -237,7 +237,7 @@ func consumeKafka(brokers, topic, groupID string) {
 			if eventType == "" { eventType = "unknown" }
 			eventsProcessed.WithLabelValues(eventType).Inc()
 			if (eventType == "purchase" || eventType == "click") && kafkaProducer != nil {
-				kafkaSend("recommendations", map[string]interface{}{
+				kafkaSend("regression-lab-recommendations", map[string]interface{}{
 					"user_id":  data["user_id"],
 					"based_on": eventType,
 					"ts":       float64(time.Now().UnixMilli()) / 1000,
@@ -262,7 +262,7 @@ func main() {
 
 	kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")
 	go initKafkaProducer(kafkaBrokers)
-	go consumeKafka(kafkaBrokers, "ingest-data", "processing-service-group")
+	go consumeKafka(kafkaBrokers, "regression-lab-ingest-data", "processing-service-group")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", metricsMiddleware(healthHandler))

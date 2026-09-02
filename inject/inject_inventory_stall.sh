@@ -4,10 +4,10 @@
 # Scenario: Inventory consumer stalls — Kafka lag grows, orders-service times out.
 #
 # What happens:
-#   - inventory-service Kafka consumer is paused (stops consuming inventory-updates)
+#   - inventory-service Kafka consumer is paused (stops consuming regression-lab-inventory-updates)
 #   - Kafka consumer lag grows rapidly (→ ~80k with sustained load)
 #   - orders-service calls to inventory-service start timing out
-#   - Shipping pipeline stalls (no shipping-events produced)
+#   - Shipping pipeline stalls (no regression-lab-shipping-events produced)
 #
 # Root cause: inventory-service consumer pause
 # Red herrings: Kafka itself is healthy, orders-service metrics show latency first

@@ -8,13 +8,16 @@ services using net/http, prometheus/client_golang, go-redis, and sarama.
 
 Service Architecture (36 services):
   Auth:      frontend -> api-gateway -> auth-service -> session-service, user-service
-  Orders:    checkout -> Kafka(orders) -> orders-service -> inventory-service -> Kafka(shipping-events) -> shipping-service -> warehouse-service
+  Orders:    checkout -> Kafka(regression-lab-orders) -> orders-service -> inventory-service -> Kafka(regression-lab-shipping-events) -> shipping-service -> warehouse-service
   Search:    frontend -> search-service -> ranking-service -> profile-service -> user-service
   Deep:      frontend -> api-gateway -> catalog-service -> review-service -> recommendation-service -> analytics-service -> reporting-service
   Billing:   checkout -> billing-service -> payment-adapter -> external-payment-api; billing-service -> tax-service, fraud-detection
-  Streaming: ingest-service -> Kafka(ingest-data) -> processing-service -> Kafka(recommendations) -> recommendation-service -> delivery-service
+  Streaming: ingest-service -> Kafka(regression-lab-ingest-data) -> processing-service -> Kafka(regression-lab-recommendations) -> recommendation-service -> delivery-service
   Orders UI: frontend -> api-gateway -> orders-service -> inventory-service -> warehouse-service
   Checkout:  checkout -> pricing-service -> discount-service -> loyalty-service
+
+Kafka topics are prefixed with regression-lab- so they do not collide with
+existing cluster topics (orders, notifications, etc.).
 """
 
 import os
@@ -22,6 +25,16 @@ import textwrap
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 SERVICES_DIR = os.path.join(BASE, "environment", "services")
+
+# Prefix keeps demo topics unique on shared Kafka clusters.
+KAFKA_TOPIC_ORDERS = "regression-lab-orders"
+KAFKA_TOPIC_INVENTORY_UPDATES = "regression-lab-inventory-updates"
+KAFKA_TOPIC_SHIPPING_EVENTS = "regression-lab-shipping-events"
+KAFKA_TOPIC_NOTIFICATIONS = "regression-lab-notifications"
+KAFKA_TOPIC_AUDIT_EVENTS = "regression-lab-audit-events"
+KAFKA_TOPIC_ANALYTICS_EVENTS = "regression-lab-analytics-events"
+KAFKA_TOPIC_INGEST_DATA = "regression-lab-ingest-data"
+KAFKA_TOPIC_RECOMMENDATIONS = "regression-lab-recommendations"
 
 # -- Service definitions -------------------------------------------------------
 
@@ -548,7 +561,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 \t\tuserData = map[string]interface{}{"user_id": userID}
 \t}
 \t// Kafka audit event
-\tkafkaSend("audit-events", map[string]interface{}{
+\tkafkaSend("regression-lab-audit-events", map[string]interface{}{
 \t\t"event": "login", "user_id": userID, "ts": float64(time.Now().UnixMilli()) / 1000,
 \t})
 \tauthOutcomes.WithLabelValues("success").Inc()
@@ -675,7 +688,7 @@ func ordersRouter(w http.ResponseWriter, r *http.Request) {
 \thttp.NotFound(w, r)
 }
 '''
-    # Kafka consumer body for "orders" topic
+    # Kafka consumer body for "regression-lab-orders" topic
     consumer_body = '''\t\t\tlog.Printf("Processing order from Kafka: %v", data["checkout_id"])
 \t\t\tordersProcessed.WithLabelValues("kafka").Inc()
 \t\t\t// Call inventory to reserve
@@ -683,11 +696,11 @@ func ordersRouter(w http.ResponseWriter, r *http.Request) {
 \t\t\tif checkoutID == "" { checkoutID = "unknown" }
 \t\t\thttpPost(inventoryServiceURL + "/inventory/reserve?order_id=" + url.QueryEscape(checkoutID) + "&items=item-1,item-2")
 \t\t\t// Produce inventory-updates
-\t\t\tkafkaSend("inventory-updates", map[string]interface{}{
+\t\t\tkafkaSend("regression-lab-inventory-updates", map[string]interface{}{
 \t\t\t\t"order_id": checkoutID, "status": "reserved",
 \t\t\t\t"ts": float64(time.Now().UnixMilli()) / 1000,
 \t\t\t})'''
-    code += go_kafka_consumer_func("orders", "orders-service-group", consumer_body)
+    code += go_kafka_consumer_func(KAFKA_TOPIC_ORDERS, "orders-service-group", consumer_body)
     code += go_main_func(
         [
             'inventoryServiceURL = getEnv("INVENTORY_SERVICE_URL", "http://inventory-service:8086")',
@@ -695,7 +708,7 @@ func ordersRouter(w http.ResponseWriter, r *http.Request) {
             'shippingServiceURL = getEnv("SHIPPING_SERVICE_URL", "http://shipping-service:8087")',
             'kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")',
             'go initKafkaProducer(kafkaBrokers)',
-            'go consumeKafka(kafkaBrokers, "orders", "orders-service-group")',
+            'go consumeKafka(kafkaBrokers, "regression-lab-orders", "orders-service-group")',
         ],
         [
             'mux.HandleFunc("/admin/config", adminConfigHandler)',
@@ -784,11 +797,11 @@ func inventoryStatusHandler(w http.ResponseWriter, r *http.Request) {
 \t\t\tlog.Printf("Inventory update: %v", data["order_id"])
 \t\t\tinventoryOps.WithLabelValues("kafka_update").Inc()
 \t\t\torderID, _ := data["order_id"].(string)
-\t\t\tkafkaSend("shipping-events", map[string]interface{}{
+\t\t\tkafkaSend("regression-lab-shipping-events", map[string]interface{}{
 \t\t\t\t"order_id": orderID, "action": "ship",
 \t\t\t\t"ts": float64(time.Now().UnixMilli()) / 1000,
 \t\t\t})'''
-    code += go_kafka_consumer_func("inventory-updates", "inventory-service-group", consumer_body)
+    code += go_kafka_consumer_func(KAFKA_TOPIC_INVENTORY_UPDATES, "inventory-service-group", consumer_body)
     code += go_main_func(
         [
             'warehouseServiceURL = getEnv("WAREHOUSE_SERVICE_URL", "http://warehouse-service:8113")',
@@ -797,7 +810,7 @@ func inventoryStatusHandler(w http.ResponseWriter, r *http.Request) {
             'initRedis(redisURL)',
             'kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")',
             'go initKafkaProducer(kafkaBrokers)',
-            'go consumeKafka(kafkaBrokers, "inventory-updates", "inventory-service-group")',
+            'go consumeKafka(kafkaBrokers, "regression-lab-inventory-updates", "inventory-service-group")',
         ],
         [
             'mux.HandleFunc("/admin/config", adminConfigHandler)',
@@ -846,7 +859,7 @@ var analyticsServiceURL string
 \t\t\thttpPost(warehouseServiceURL + "/warehouse/dispatch?order_id=" + url.QueryEscape(orderID))
 \t\t\thttpPost(notificationServiceURL + "/notify?user_id=user-1&message=" + url.QueryEscape("Order "+orderID+" shipped"))
 \t\t\tshipments.WithLabelValues("shipped").Inc()'''
-    code += go_kafka_consumer_func("shipping-events", "shipping-service-group", consumer_body)
+    code += go_kafka_consumer_func(KAFKA_TOPIC_SHIPPING_EVENTS, "shipping-service-group", consumer_body)
     code += '''
 func getShippingHandler(w http.ResponseWriter, r *http.Request) {
 \tif applyFaultInjection(w) { return }
@@ -887,7 +900,7 @@ func shippingStatusHandler(w http.ResponseWriter, r *http.Request) {
             'emailServiceURL = getEnv("EMAIL_SERVICE_URL", "http://email-service:8108")',
             'analyticsServiceURL = getEnv("ANALYTICS_SERVICE_URL", "http://analytics-service:8107")',
             'kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")',
-            'go consumeKafka(kafkaBrokers, "shipping-events", "shipping-service-group")',
+            'go consumeKafka(kafkaBrokers, "regression-lab-shipping-events", "shipping-service-group")',
         ],
         [
             'mux.HandleFunc("/admin/config", adminConfigHandler)',
@@ -954,7 +967,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 \t\t\tresults = append(results, map[string]interface{}{"id": i, "name": fmt.Sprintf("Product %d", i)})
 \t\t}
 \t}
-\tkafkaSend("analytics-events", map[string]interface{}{
+\tkafkaSend("regression-lab-analytics-events", map[string]interface{}{
 \t\t"event": "search", "query": q, "ts": float64(time.Now().UnixMilli()) / 1000,
 \t})
 \t// Fire-and-forget: track search query in analytics
@@ -1218,7 +1231,7 @@ func chargeHandler(w http.ResponseWriter, r *http.Request) {
 \t\treturn
 \t}
 
-\tkafkaSend("audit-events", map[string]interface{}{
+\tkafkaSend("regression-lab-audit-events", map[string]interface{}{
 \t\t"event": "billing", "invoice_id": invoiceID,
 \t\t"amount": total, "ts": float64(time.Now().UnixMilli()) / 1000,
 \t})
@@ -1330,7 +1343,7 @@ func produceSynthetic() {
 \ttypes := []string{"click", "view", "purchase", "scroll"}
 \tfor {
 \t\tif kafkaProducer != nil {
-\t\t\tkafkaSend("ingest-data", map[string]interface{}{
+\t\t\tkafkaSend("regression-lab-ingest-data", map[string]interface{}{
 \t\t\t\t"type":    types[rand.Intn(len(types))],
 \t\t\t\t"user_id": fmt.Sprintf("user-%d", rand.Intn(1000)+1),
 \t\t\t\t"ts":      float64(time.Now().UnixMilli()) / 1000,
@@ -1347,7 +1360,7 @@ func ingestHandler(w http.ResponseWriter, r *http.Request) {
 \tif eventType == "" { eventType = "click" }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
-\tkafkaSend("ingest-data", map[string]interface{}{
+\tkafkaSend("regression-lab-ingest-data", map[string]interface{}{
 \t\t"type": eventType, "user_id": userID,
 \t\t"ts": float64(time.Now().UnixMilli()) / 1000,
 \t})
@@ -1397,13 +1410,13 @@ func init() {
 \t\t\tif eventType == "" { eventType = "unknown" }
 \t\t\teventsProcessed.WithLabelValues(eventType).Inc()
 \t\t\tif (eventType == "purchase" || eventType == "click") && kafkaProducer != nil {
-\t\t\t\tkafkaSend("recommendations", map[string]interface{}{
+\t\t\t\tkafkaSend("regression-lab-recommendations", map[string]interface{}{
 \t\t\t\t\t"user_id":  data["user_id"],
 \t\t\t\t\t"based_on": eventType,
 \t\t\t\t\t"ts":       float64(time.Now().UnixMilli()) / 1000,
 \t\t\t\t})
 \t\t\t}'''
-    code += go_kafka_consumer_func("ingest-data", "processing-service-group", consumer_body)
+    code += go_kafka_consumer_func(KAFKA_TOPIC_INGEST_DATA, "processing-service-group", consumer_body)
     code += '''
 func statsHandler(w http.ResponseWriter, r *http.Request) {
 \tif applyFaultInjection(w) { return }
@@ -1416,7 +1429,7 @@ func statsHandler(w http.ResponseWriter, r *http.Request) {
         [
             'kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")',
             'go initKafkaProducer(kafkaBrokers)',
-            'go consumeKafka(kafkaBrokers, "ingest-data", "processing-service-group")',
+            'go consumeKafka(kafkaBrokers, "regression-lab-ingest-data", "processing-service-group")',
         ],
         [
             'mux.HandleFunc("/admin/config", adminConfigHandler)',
@@ -1458,7 +1471,7 @@ var userServiceURL string
 var cacheServiceURL string
 var ctx = context.Background()
 '''
-    # Consumer body for "recommendations" topic
+    # Consumer body for "regression-lab-recommendations" topic
     consumer_body = '''\t\t\tuserID, _ := data["user_id"].(string)
 \t\t\tif userID == "" { userID = "unknown" }
 \t\t\trecsServed.WithLabelValues("kafka").Inc()
@@ -1469,7 +1482,7 @@ var ctx = context.Background()
 \t\t\t\tredisClient.Set(ctx, "rec:"+userID, string(data), 5*time.Minute).Err()
 \t\t\t}
 \t\t\thttpPost(deliveryServiceURL + "/deliver?user_id=" + url.QueryEscape(userID) + "&type=recommendation")'''
-    code += go_kafka_consumer_func("recommendations", "recommendation-service-group", consumer_body)
+    code += go_kafka_consumer_func(KAFKA_TOPIC_RECOMMENDATIONS, "recommendation-service-group", consumer_body)
     code += '''
 func getRecommendationsHandler(w http.ResponseWriter, r *http.Request) {
 \tif applyFaultInjection(w) { return }
@@ -1525,7 +1538,7 @@ func getRecommendationsHandler(w http.ResponseWriter, r *http.Request) {
             'redisURL := getEnv("REDIS_URL", "redis://redis:6379/3")',
             'initRedis(redisURL)',
             'kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")',
-            'go consumeKafka(kafkaBrokers, "recommendations", "recommendation-service-group")',
+            'go consumeKafka(kafkaBrokers, "regression-lab-recommendations", "recommendation-service-group")',
         ],
         [
             'mux.HandleFunc("/admin/config", adminConfigHandler)',
@@ -1871,7 +1884,7 @@ var emailServiceURL string
 \t\t\tbody, _ := data["body"].(string)
 \t\t\tif body == "" { body = "You have a notification" }
 \t\t\thttpPost(emailServiceURL + "/email/send?to=" + url.QueryEscape(email) + "&subject=" + url.QueryEscape(subject) + "&body=" + url.QueryEscape(body))'''
-    code += go_kafka_consumer_func("notifications", "notification-service-group", consumer_body)
+    code += go_kafka_consumer_func(KAFKA_TOPIC_NOTIFICATIONS, "notification-service-group", consumer_body)
     code += '''
 func notifyHandler(w http.ResponseWriter, r *http.Request) {
 \tif applyFaultInjection(w) { return }
@@ -1890,7 +1903,7 @@ func notifyHandler(w http.ResponseWriter, r *http.Request) {
         [
             'emailServiceURL = getEnv("EMAIL_SERVICE_URL", "http://email-service:8108")',
             'kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")',
-            'go consumeKafka(kafkaBrokers, "notifications", "notification-service-group")',
+            'go consumeKafka(kafkaBrokers, "regression-lab-notifications", "notification-service-group")',
         ],
         [
             'mux.HandleFunc("/admin/config", adminConfigHandler)',
@@ -2202,7 +2215,7 @@ func getReviewsHandler(w http.ResponseWriter, r *http.Request) {
 \t\t\trelated = recs
 \t\t}
 \t}
-\tkafkaSend("analytics-events", map[string]interface{}{
+\tkafkaSend("regression-lab-analytics-events", map[string]interface{}{
 \t\t"event": "review_view", "product_id": productID,
 \t\t"ts": float64(time.Now().UnixMilli()) / 1000,
 \t})
@@ -2360,7 +2373,7 @@ var (
 \t\t\t}
 \t\t\tauditMutex.Unlock()
 \t\t\tlog.Printf("Audit event: %s", eventType)'''
-    code += go_kafka_consumer_func("audit-events", "audit-service-group", consumer_body)
+    code += go_kafka_consumer_func(KAFKA_TOPIC_AUDIT_EVENTS, "audit-service-group", consumer_body)
     code += '''
 func recentHandler(w http.ResponseWriter, r *http.Request) {
 \tif applyFaultInjection(w) { return }
@@ -2377,7 +2390,7 @@ func recentHandler(w http.ResponseWriter, r *http.Request) {
         [
             'auditLog = make([]map[string]interface{}, 0)',
             'kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")',
-            'go consumeKafka(kafkaBrokers, "audit-events", "audit-service-group")',
+            'go consumeKafka(kafkaBrokers, "regression-lab-audit-events", "audit-service-group")',
         ],
         [
             'mux.HandleFunc("/admin/config", adminConfigHandler)',
@@ -2486,7 +2499,7 @@ var cacheServiceURL string
 \t\t\teventMutex.Lock()
 \t\t\teventCounts[eventType]++
 \t\t\teventMutex.Unlock()'''
-    code += go_kafka_consumer_func("analytics-events", "analytics-service-group", consumer_body)
+    code += go_kafka_consumer_func(KAFKA_TOPIC_ANALYTICS_EVENTS, "analytics-service-group", consumer_body)
     code += '''
 func signalsHandler(w http.ResponseWriter, r *http.Request) {
 \tif applyFaultInjection(w) { return }
@@ -2527,7 +2540,7 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
             'reportingServiceURL = getEnv("REPORTING_SERVICE_URL", "http://reporting-service:8110")',
             'cacheServiceURL = getEnv("CACHE_SERVICE_URL", "http://cache-service:8109")',
             'kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")',
-            'go consumeKafka(kafkaBrokers, "analytics-events", "analytics-service-group")',
+            'go consumeKafka(kafkaBrokers, "regression-lab-analytics-events", "analytics-service-group")',
         ],
         [
             'mux.HandleFunc("/admin/config", adminConfigHandler)',
@@ -2878,7 +2891,7 @@ func dispatchHandler(w http.ResponseWriter, r *http.Request) {
 \torderID := r.URL.Query().Get("order_id")
 \tif orderID == "" { orderID = "unknown" }
 \twarehouseOps.WithLabelValues("dispatch").Inc()
-\tkafkaSend("notifications", map[string]interface{}{
+\tkafkaSend("regression-lab-notifications", map[string]interface{}{
 \t\t"email":   "warehouse@example.com",
 \t\t"subject": fmt.Sprintf("Order %s dispatched", orderID),
 \t\t"body":    fmt.Sprintf("Order %s has been dispatched from warehouse", orderID),
@@ -3619,12 +3632,12 @@ if __name__ == "__main__":
     print()
     print("Service communication flows:")
     print("  Auth:      frontend -> api-gateway -> auth-service -> session-service, user-service")
-    print("  Orders:    checkout -> Kafka(orders) -> orders-service -> inventory -> Kafka(shipping-events) -> shipping -> warehouse")
+    print("  Orders:    checkout -> Kafka(regression-lab-orders) -> orders-service -> inventory -> Kafka(regression-lab-shipping-events) -> shipping -> warehouse")
     print("  Search:    frontend -> search-service -> ranking-service -> profile-service -> user-service")
     print("  Deep:      frontend -> api-gateway -> catalog -> review -> recommendation -> analytics -> reporting")
     print("  Billing:   checkout -> billing -> payment-adapter -> external-payment-api")
-    print("  Streaming: ingest -> Kafka(ingest-data) -> processing -> Kafka(recommendations) -> recommendation -> delivery")
+    print("  Streaming: ingest -> Kafka(regression-lab-ingest-data) -> processing -> Kafka(regression-lab-recommendations) -> recommendation -> delivery")
     print("  Orders UI: frontend -> api-gateway -> orders-service -> inventory -> warehouse")
     print("  Checkout:  checkout -> pricing -> discount -> loyalty")
     print()
-    print("Kafka topics: orders, inventory-updates, shipping-events, notifications, audit-events, analytics-events, ingest-data, recommendations")
+    print("Kafka topics: regression-lab-orders, regression-lab-inventory-updates, regression-lab-shipping-events, regression-lab-notifications, regression-lab-audit-events, regression-lab-analytics-events, regression-lab-ingest-data, regression-lab-recommendations")

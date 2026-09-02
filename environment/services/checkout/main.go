@@ -5,7 +5,7 @@
 // 3. Calls fraud-detection for risk check
 // 4. Calls payments-api to process payment
 // 5. Calls billing-service for invoice
-// 6. Publishes order to Kafka (orders topic)
+// 6. Publishes order to Kafka (regression-lab-orders topic)
 //
 // When payments-api is slow or erroring, checkout error rate rises.
 // A configurable timeout on payments-api calls triggers a 503 back to the caller.
@@ -431,7 +431,7 @@ func checkoutHandler(w http.ResponseWriter, r *http.Request) {
 			"payment_id":  paymentData["payment_id"],
 		})
 		msg := &sarama.ProducerMessage{
-			Topic: "orders",
+			Topic: "regression-lab-orders",
 			Value: sarama.ByteEncoder(orderMsg),
 		}
 		if _, _, err := kafkaProducer.SendMessage(msg); err != nil {

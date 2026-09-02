@@ -234,7 +234,7 @@ func main() {
 
 	emailServiceURL = getEnv("EMAIL_SERVICE_URL", "http://email-service:8108")
 	kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")
-	go consumeKafka(kafkaBrokers, "notifications", "notification-service-group")
+	go consumeKafka(kafkaBrokers, "regression-lab-notifications", "notification-service-group")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", metricsMiddleware(healthHandler))

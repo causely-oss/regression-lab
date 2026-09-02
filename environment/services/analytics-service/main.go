@@ -260,7 +260,7 @@ func main() {
 	reportingServiceURL = getEnv("REPORTING_SERVICE_URL", "http://reporting-service:8110")
 	cacheServiceURL = getEnv("CACHE_SERVICE_URL", "http://cache-service:8109")
 	kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")
-	go consumeKafka(kafkaBrokers, "analytics-events", "analytics-service-group")
+	go consumeKafka(kafkaBrokers, "regression-lab-analytics-events", "analytics-service-group")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", metricsMiddleware(healthHandler))

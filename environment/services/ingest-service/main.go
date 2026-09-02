@@ -212,7 +212,7 @@ func produceSynthetic() {
 	types := []string{"click", "view", "purchase", "scroll"}
 	for {
 		if kafkaProducer != nil {
-			kafkaSend("ingest-data", map[string]interface{}{
+			kafkaSend("regression-lab-ingest-data", map[string]interface{}{
 				"type":    types[rand.Intn(len(types))],
 				"user_id": fmt.Sprintf("user-%d", rand.Intn(1000)+1),
 				"ts":      float64(time.Now().UnixMilli()) / 1000,
@@ -229,7 +229,7 @@ func ingestHandler(w http.ResponseWriter, r *http.Request) {
 	if eventType == "" { eventType = "click" }
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" { userID = "user-1" }
-	kafkaSend("ingest-data", map[string]interface{}{
+	kafkaSend("regression-lab-ingest-data", map[string]interface{}{
 		"type": eventType, "user_id": userID,
 		"ts": float64(time.Now().UnixMilli()) / 1000,
 	})

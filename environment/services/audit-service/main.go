@@ -236,7 +236,7 @@ func main() {
 
 	auditLog = make([]map[string]interface{}, 0)
 	kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")
-	go consumeKafka(kafkaBrokers, "audit-events", "audit-service-group")
+	go consumeKafka(kafkaBrokers, "regression-lab-audit-events", "audit-service-group")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", metricsMiddleware(healthHandler))

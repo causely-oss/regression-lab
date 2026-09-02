@@ -229,7 +229,7 @@ func getReviewsHandler(w http.ResponseWriter, r *http.Request) {
 			related = recs
 		}
 	}
-	kafkaSend("analytics-events", map[string]interface{}{
+	kafkaSend("regression-lab-analytics-events", map[string]interface{}{
 		"event": "review_view", "product_id": productID,
 		"ts": float64(time.Now().UnixMilli()) / 1000,
 	})

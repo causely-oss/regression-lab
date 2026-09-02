@@ -256,7 +256,7 @@ func chargeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	kafkaSend("audit-events", map[string]interface{}{
+	kafkaSend("regression-lab-audit-events", map[string]interface{}{
 		"event": "billing", "invoice_id": invoiceID,
 		"amount": total, "ts": float64(time.Now().UnixMilli()) / 1000,
 	})

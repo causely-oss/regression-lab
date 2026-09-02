@@ -179,18 +179,18 @@ spec:
       rules:
         - alert: KafkaConsumerGroupLagHigh
           expr: >
-            kafka_consumergroup_lag_sum{consumergroup="inventory-service-group",topic="inventory-updates"}
+            kafka_consumergroup_lag_sum{consumergroup="inventory-service-group",topic="regression-lab-inventory-updates"}
             > 1000
           for: 30s
           labels:
             severity: critical
             flow: orders
             namespace: scenario-01
-            topic: inventory-updates
+            topic: regression-lab-inventory-updates
             consumergroup: inventory-service-group
           annotations:
             summary: "inventory-service Kafka consumer lag above 1000"
-            description: "inventory-service-group lag on inventory-updates is {{ $value | humanize }} messages"
+            description: "inventory-service-group lag on regression-lab-inventory-updates is {{ $value | humanize }} messages"
 
     # ── Scenarios 3 & 4: DB latency fault ──────────────────────────────────
     - name: scenario-01.db-latency

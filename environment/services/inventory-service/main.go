@@ -326,7 +326,7 @@ func consumeKafka(brokers, topic, groupID string) {
 			log.Printf("Inventory update: %v", data["order_id"])
 			inventoryOps.WithLabelValues("kafka_update").Inc()
 			orderID, _ := data["order_id"].(string)
-			kafkaSend("shipping-events", map[string]interface{}{
+			kafkaSend("regression-lab-shipping-events", map[string]interface{}{
 				"order_id": orderID, "action": "ship",
 				"ts": float64(time.Now().UnixMilli()) / 1000,
 			})
@@ -346,7 +346,7 @@ func main() {
 	initRedis(redisURL)
 	kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")
 	go initKafkaProducer(kafkaBrokers)
-	go consumeKafka(kafkaBrokers, "inventory-updates", "inventory-service-group")
+	go consumeKafka(kafkaBrokers, "regression-lab-inventory-updates", "inventory-service-group")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", metricsMiddleware(healthHandler))

@@ -231,7 +231,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		userData = map[string]interface{}{"user_id": userID}
 	}
 	// Kafka audit event
-	kafkaSend("audit-events", map[string]interface{}{
+	kafkaSend("regression-lab-audit-events", map[string]interface{}{
 		"event": "login", "user_id": userID, "ts": float64(time.Now().UnixMilli()) / 1000,
 	})
 	authOutcomes.WithLabelValues("success").Inc()

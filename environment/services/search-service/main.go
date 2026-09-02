@@ -241,7 +241,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			results = append(results, map[string]interface{}{"id": i, "name": fmt.Sprintf("Product %d", i)})
 		}
 	}
-	kafkaSend("analytics-events", map[string]interface{}{
+	kafkaSend("regression-lab-analytics-events", map[string]interface{}{
 		"event": "search", "query": q, "ts": float64(time.Now().UnixMilli()) / 1000,
 	})
 	// Fire-and-forget: track search query in analytics

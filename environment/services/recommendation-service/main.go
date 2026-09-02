@@ -301,7 +301,7 @@ func main() {
 	redisURL := getEnv("REDIS_URL", "redis://redis:6379/3")
 	initRedis(redisURL)
 	kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")
-	go consumeKafka(kafkaBrokers, "recommendations", "recommendation-service-group")
+	go consumeKafka(kafkaBrokers, "regression-lab-recommendations", "recommendation-service-group")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", metricsMiddleware(healthHandler))

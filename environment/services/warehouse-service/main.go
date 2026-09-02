@@ -225,7 +225,7 @@ func dispatchHandler(w http.ResponseWriter, r *http.Request) {
 	orderID := r.URL.Query().Get("order_id")
 	if orderID == "" { orderID = "unknown" }
 	warehouseOps.WithLabelValues("dispatch").Inc()
-	kafkaSend("notifications", map[string]interface{}{
+	kafkaSend("regression-lab-notifications", map[string]interface{}{
 		"email":   "warehouse@example.com",
 		"subject": fmt.Sprintf("Order %s dispatched", orderID),
 		"body":    fmt.Sprintf("Order %s has been dispatched from warehouse", orderID),

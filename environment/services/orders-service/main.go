@@ -302,7 +302,7 @@ func consumeKafka(brokers, topic, groupID string) {
 			if checkoutID == "" { checkoutID = "unknown" }
 			httpPost(inventoryServiceURL + "/inventory/reserve?order_id=" + url.QueryEscape(checkoutID) + "&items=item-1,item-2")
 			// Produce inventory-updates
-			kafkaSend("inventory-updates", map[string]interface{}{
+			kafkaSend("regression-lab-inventory-updates", map[string]interface{}{
 				"order_id": checkoutID, "status": "reserved",
 				"ts": float64(time.Now().UnixMilli()) / 1000,
 			})
@@ -321,7 +321,7 @@ func main() {
 	shippingServiceURL = getEnv("SHIPPING_SERVICE_URL", "http://shipping-service:8087")
 	kafkaBrokers := getEnv("KAFKA_BROKERS", "kafka:9092")
 	go initKafkaProducer(kafkaBrokers)
-	go consumeKafka(kafkaBrokers, "orders", "orders-service-group")
+	go consumeKafka(kafkaBrokers, "regression-lab-orders", "orders-service-group")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", metricsMiddleware(healthHandler))

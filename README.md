@@ -68,25 +68,25 @@ synchronous call chain — making root cause analysis a realistic challenge.
 | **Checkout** | checkout → pricing-service → discount-service → loyalty-service → cache-service; pricing also → tax-service, cache-service | Sync HTTP |
 | **Payment** | checkout → payments-api → payments-db (PostgreSQL); checkout → fraud-detection → analytics-service | Sync HTTP |
 | **Billing** | checkout → billing-service → payment-adapter → external-payment-api; billing also → tax-service, fraud-detection, notification-service | Sync HTTP |
-| **Order Pipeline** | checkout → Kafka(orders) → orders-service → notification-service, shipping-service; orders → Kafka(inventory-updates) → inventory-service → notification-service; inventory → Kafka(shipping-events) → shipping-service → email-service, analytics-service | Kafka async + Sync HTTP |
+| **Order Pipeline** | checkout → Kafka(regression-lab-orders) → orders-service → notification-service, shipping-service; orders → Kafka(regression-lab-inventory-updates) → inventory-service → notification-service; inventory → Kafka(regression-lab-shipping-events) → shipping-service → email-service, analytics-service | Kafka async + Sync HTTP |
 | **Search** | frontend → search-service → ranking-service → analytics-service, recommendation-service; ranking → profile-service → loyalty-service, cache-service; profile → user-service → cache-service, media-service → cache-service | Sync HTTP |
 | **Deep Chain** | frontend → api-gateway → catalog-service → review-service → user-service, media-service; review → recommendation-service → user-service, cache-service; recommendation → analytics-service → cache-service; analytics → reporting-service → cache-service; catalog also → pricing-service, inventory-service | Sync HTTP |
 | **Cart** | frontend → api-gateway → cart-service → catalog-service; cart also → pricing-service, session-service | Sync HTTP |
-| **Streaming** | frontend → ingest-service → Kafka(ingest-data) → processing-service → Kafka(recommendations) → recommendation-service → delivery-service → warehouse-service, email-service, notification-service | Kafka async + Sync HTTP |
-| **Orders UI** | frontend → api-gateway → orders-service → inventory-service → warehouse-service → Kafka(notifications) → notification-service → email-service | Sync HTTP + Kafka |
+| **Streaming** | frontend → ingest-service → Kafka(regression-lab-ingest-data) → processing-service → Kafka(regression-lab-recommendations) → recommendation-service → delivery-service → warehouse-service, email-service, notification-service | Kafka async + Sync HTTP |
+| **Orders UI** | frontend → api-gateway → orders-service → inventory-service → warehouse-service → Kafka(regression-lab-notifications) → notification-service → email-service | Sync HTTP + Kafka |
 
 ### Kafka Topics
 
 | Topic | Producers | Consumers |
 |-------|-----------|-----------|
-| `orders` | checkout | orders-service |
-| `inventory-updates` | orders-service | inventory-service |
-| `shipping-events` | inventory-service | shipping-service |
-| `notifications` | warehouse-service | notification-service |
-| `audit-events` | auth-service, billing-service | audit-service |
-| `analytics-events` | search-service, review-service | analytics-service |
-| `ingest-data` | ingest-service | processing-service |
-| `recommendations` | processing-service | recommendation-service |
+| `regression-lab-orders` | checkout | orders-service |
+| `regression-lab-inventory-updates` | orders-service | inventory-service |
+| `regression-lab-shipping-events` | inventory-service | shipping-service |
+| `regression-lab-notifications` | warehouse-service | notification-service |
+| `regression-lab-audit-events` | auth-service, billing-service | audit-service |
+| `regression-lab-analytics-events` | search-service, review-service | analytics-service |
+| `regression-lab-ingest-data` | ingest-service | processing-service |
+| `regression-lab-recommendations` | processing-service | recommendation-service |
 
 ### All Services (36)
 
@@ -447,7 +447,7 @@ bash inject/inject_inventory_stall.sh      # inject
 bash inject/restore_inventory_stall.sh     # restore
 ```
 
-**Root cause:** inventory-service Kafka consumer paused — stops processing `inventory-updates`
+**Root cause:** inventory-service Kafka consumer paused — stops processing `regression-lab-inventory-updates`
 **Effects:** Kafka consumer lag grows to 80k+, orders-service times out waiting on inventory, shipping pipeline stalls
 **Red herrings:** Kafka brokers are healthy, orders-service latency appears first
 **Eval prompt:** *"Orders are taking forever and the shipping pipeline seems stuck."*
