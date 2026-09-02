@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: load-generator
-        image: docker.io/moyle123/load-generator:v1
+        image: docker.io/causely-oss/load-generator:v1
         env:
         - name: PYTHONUNBUFFERED
           value: "1"

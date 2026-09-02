@@ -91,7 +91,7 @@ def gen_go_mod(svc_name, needs_kafka, needs_redis):
     lines = [
         f"module {GO_MODULE_PREFIX}/{svc_name}",
         "",
-        "go 1.22",
+        "go 1.25.0",
         "",
         "require (",
         '\tgithub.com/prometheus/client_golang v1.19.0',
@@ -109,7 +109,7 @@ def gen_go_mod(svc_name, needs_kafka, needs_redis):
 
 def gen_dockerfile(svc_name, port):
     return textwrap.dedent(f"""\
-    FROM golang:1.22-alpine AS builder
+    FROM golang:1.25-alpine AS builder
     WORKDIR /app
     COPY go.mod ./
     COPY main.go .
@@ -3280,7 +3280,7 @@ def gen_k8s_app_yaml():
 
         lines.append("      containers:")
         lines.append(f"        - name: {svc_name}")
-        lines.append(f"          image: docker.io/moyle123/{svc_name}:v1")
+        lines.append(f"          image: docker.io/causely-oss/{svc_name}:v1")
         lines.append("          imagePullPolicy: IfNotPresent")
         lines.append("          ports:")
         lines.append(f"            - containerPort: {port}")

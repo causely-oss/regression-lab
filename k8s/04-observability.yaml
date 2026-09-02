@@ -104,7 +104,7 @@ spec:
     spec:
       containers:
         - name: kafka-exporter
-          image: docker.io/moyle123/kafka-exporter:v1
+          image: docker.io/causely-oss/kafka-exporter:v1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9308

@@ -12,7 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICES_DIR="$SCRIPT_DIR/../environment/services"
 
-REGISTRY="${REGISTRY:-docker.io/moyle123}"
+REGISTRY="${REGISTRY:-docker.io/causely-oss}"
 PLATFORM="${PLATFORM:-linux/amd64}"
 TAG="${TAG:-v1}"
 

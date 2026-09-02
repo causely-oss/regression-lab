@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: cart-service
-        image: docker.io/moyle123/cart-service:v2
+        image: docker.io/causely-oss/cart-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8101
