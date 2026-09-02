@@ -203,29 +203,29 @@ kubectl cluster-info --context kind-scenario-01
 
 ### 1. Build service images
 
-All 36 Go services use multi-stage Docker builds (`golang:1.22-alpine` → `alpine:3.19`)
+All 36 Go services use multi-stage Docker builds (`golang:1.25-alpine` → `alpine:3.19`)
 and need their images built and made available to your cluster.
 
-Images are pushed to `docker.io/moyle123/<service>:v1` by default. To use a different
+Images are pushed to `docker.io/causely-oss/<service>:v1` by default. To use a different
 registry or tag, set the `REGISTRY` and `TAG` environment variables:
 
 ```bash
 docker login
-bash k8s/build-images.sh                          # default: docker.io/moyle123/*:v1
+bash k8s/build-images.sh                          # default: docker.io/causely-oss/*:v1
 REGISTRY=docker.io/myuser TAG=v2 bash k8s/build-images.sh  # example custom registry/tag
 ```
 
 If you change the registry or tag, update `k8s/03-app.yaml` to match:
 ```bash
-sed -i '' 's|image: docker.io/moyle123/|image: docker.io/<your-username>/|g' k8s/03-app.yaml
+sed -i '' 's|image: docker.io/causely-oss/|image: docker.io/<your-username>/|g' k8s/03-app.yaml
 sed -i '' 's|:v1|:<your-tag>|g' k8s/03-app.yaml
 ```
 
 **kind — loading locally built images:** kind nodes run in Docker containers and can't see your local Docker images directly. After building, load each image into the cluster:
 
 ```bash
-# Load all 36 images into kind (replace moyle123 / v1 if you used a custom registry/tag)
-for svc in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep 'moyle123'); do
+# Load all 36 images into kind (replace causely-oss / v1 if you used a custom registry/tag)
+for svc in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep 'causely-oss'); do
   kind load docker-image "$svc" --name scenario-01
 done
 ```
@@ -624,12 +624,12 @@ Fault injection and restore are handled automatically by the runner between prom
 
 | Component | Technology |
 |-----------|------------|
-| Services (36) | Go 1.22, `net/http` |
+| Services (36) | Go 1.25, `net/http` |
 | Prometheus metrics | `github.com/prometheus/client_golang` |
 | Kafka | `github.com/IBM/sarama` |
 | Redis | `github.com/redis/go-redis/v9` |
 | PostgreSQL | `github.com/jackc/pgx/v5` |
-| Container images | Multi-stage: `golang:1.22-alpine` → `alpine:3.19` |
+| Container images | Multi-stage: `golang:1.25-alpine` → `alpine:3.19` |
 | Service generator | `generate_services.py` (generates Go code for 32 of 36 services) |
 | Load generator | Python 3 + aiohttp |
 

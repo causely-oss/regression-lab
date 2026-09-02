@@ -19,7 +19,7 @@
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-scenario-01}"
-REGISTRY="${REGISTRY:-moyle123}"
+REGISTRY="${REGISTRY:-causely-oss}"
 
 SERVICES=(
   frontend
