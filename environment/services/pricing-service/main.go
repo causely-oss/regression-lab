@@ -311,19 +311,27 @@ func calculateHandler(w http.ResponseWriter, r *http.Request) {
 	if items == "" { items = "item-1,item-2" }
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" { userID = "user-1" }
-	itemList := strings.Split(items, ",")
-	baseTotal := 0.0
-	for range itemList {
-		baseTotal += float64(int(rand.Float64()*9000+1000)) / 100.0
-	}
-	// Get discount
-	finalTotal := baseTotal
-	discData, err := httpGet(r.Context(), discountServiceURL + "/discount/apply?user_id=" + userID + "&amount=" + fmt.Sprintf("%.2f", baseTotal))
-	if err == nil {
-		if fa, ok := discData["final_amount"].(float64); ok {
-			finalTotal = fa
+	lineItems := strings.Split(items, ",")
+	itemList := lineItems
+	subtotal := 0.0
+	discountedTotal := 0.0
+	// Price and discount each line item individually so per-SKU promotions
+	// (e.g. a discount that only applies to certain items) are respected.
+	for _, sku := range lineItems {
+		linePrice := float64(int(rand.Float64()*9000+1000)) / 100.0
+		subtotal += linePrice
+		lineFinal := linePrice
+		discData, err := httpGet(r.Context(), discountServiceURL+"/discount/apply?user_id="+userID+"&amount="+fmt.Sprintf("%.2f", linePrice))
+		if err == nil {
+			if fa, ok := discData["final_amount"].(float64); ok {
+				lineFinal = fa
+			}
 		}
+		_ = sku
+		discountedTotal += lineFinal
 	}
+	baseTotal := subtotal
+	finalTotal := discountedTotal
 	if redisClient != nil {
 		data, _ := json.Marshal(map[string]interface{}{"base": baseTotal, "final": finalTotal})
 		redisClient.Set(ctx, fmt.Sprintf("price:%s:%s", userID, items), string(data), 2*time.Minute).Err()
