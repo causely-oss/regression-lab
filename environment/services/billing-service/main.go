@@ -224,9 +224,16 @@ func kafkaSend(topic string, data map[string]interface{}) {
 }
 
 
+// Reuse a tuned transport across requests instead of the default one so
+// downstream calls benefit from connection pooling under load.
+var billingTransport = &http.Transport{
+	MaxIdleConns:        100,
+	MaxIdleConnsPerHost: 20,
+	IdleConnTimeout:     90 * time.Second,
+}
+
 var otelHTTPClient = &http.Client{
-	Timeout:   5 * time.Second,
-	Transport: otelhttp.NewTransport(http.DefaultTransport),
+	Transport: otelhttp.NewTransport(billingTransport),
 }
 
 
