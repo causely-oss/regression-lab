@@ -13,6 +13,17 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	oteltrace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
@@ -77,8 +88,12 @@ var httpClient = &http.Client{
 	},
 }
 
-func httpGet(url string) (map[string]interface{}, error) {
-	resp, err := httpClient.Get(url)
+func httpGet(ctx context.Context, url string) (map[string]interface{}, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := otelHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +103,13 @@ func httpGet(url string) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func httpPost(url string) (map[string]interface{}, error) {
-	resp, err := httpClient.Post(url, "application/json", nil)
+func httpPost(ctx context.Context, url string) (map[string]interface{}, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := otelHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +118,7 @@ func httpPost(url string) (map[string]interface{}, error) {
 	json.NewDecoder(resp.Body).Decode(&result)
 	return result, nil
 }
+
 
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -188,6 +209,111 @@ func initRedis(redisURL string) {
 	log.Printf("Redis client configured for %s db=%d", addr, db)
 }
 
+
+var otelHTTPClient = &http.Client{
+	Timeout:   5 * time.Second,
+	Transport: otelhttp.NewTransport(http.DefaultTransport),
+}
+
+
+func otlpHTTPHostPort(raw string) string {
+	u := strings.TrimSpace(raw)
+	u = strings.TrimPrefix(u, "https://")
+	u = strings.TrimPrefix(u, "http://")
+	if i := strings.Index(u, "/"); i >= 0 {
+		u = u[:i]
+	}
+	return strings.TrimSuffix(u, "/")
+}
+
+func annotateHTTPSpan(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		if span := oteltrace.SpanFromContext(r.Context()); span.IsRecording() {
+			span.SetAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.route", httpRoute(r.URL.Path)),
+				attribute.String("http.target", r.URL.Path),
+				attribute.Int("http.status_code", rec.statusCode),
+			)
+		}
+	})
+}
+
+func httpRoute(path string) string {
+	switch {
+	case strings.HasSuffix(path, "/add") && strings.HasPrefix(path, "/cart/"):
+		return "/cart/{user}/add"
+	case strings.HasPrefix(path, "/cart/"):
+		return "/cart/{user}"
+	case strings.HasPrefix(path, "/reviews/"):
+		return "/reviews/{product}"
+	default:
+		return path
+	}
+}
+
+func spanNameFromRequest(_ string, r *http.Request) string {
+	return r.Method + " " + httpRoute(r.URL.Path)
+}
+
+func initTracer() func() {
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		return func() {}
+	}
+	ctx := context.Background()
+	opts := []otlptracehttp.Option{
+		otlptracehttp.WithInsecure(),
+		otlptracehttp.WithEndpoint(otlpHTTPHostPort(endpoint)),
+	}
+	exp, err := otlptracehttp.New(ctx, opts...)
+	if err != nil {
+		log.Printf("otel exporter init failed: %v", err)
+		return func() {}
+	}
+	name := os.Getenv("OTEL_SERVICE_NAME")
+	if name == "" {
+		name = serviceName
+	}
+	res := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceName(name),
+	)
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(res),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+	var mp *sdkmetric.MeterProvider
+	mexp, merr := otlpmetrichttp.New(ctx,
+		otlpmetrichttp.WithInsecure(),
+		otlpmetrichttp.WithEndpoint(otlpHTTPHostPort(endpoint)),
+	)
+	if merr != nil {
+		log.Printf("otel metric exporter init failed: %v", merr)
+	} else {
+		mp = sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(mexp)),
+			sdkmetric.WithResource(res),
+		)
+		otel.SetMeterProvider(mp)
+	}
+	return func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = tp.Shutdown(shutdownCtx)
+		if mp != nil {
+			_ = mp.Shutdown(shutdownCtx)
+		}
+	}
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, http.StatusOK, map[string]string{"service": serviceName, "status": "ok"})
 }
@@ -214,7 +340,7 @@ func fireAndForget(name, url string) {
 	}
 	go func() {
 		defer func() { <-backgroundCallSem }()
-		if _, err := httpGet(url); err != nil {
+		if _, err := httpGet(context.Background(), url); err != nil {
 			log.Printf("WARNING: %s call failed: %v", name, err)
 		}
 	}()
@@ -249,7 +375,7 @@ func addToCartHandler(w http.ResponseWriter, r *http.Request) {
 	productID := r.URL.Query().Get("product_id")
 	if productID == "" { productID = "prod-1" }
 	// Validate product
-	product, _ := httpGet(catalogServiceURL + "/catalog/product/" + url.QueryEscape(productID))
+	product, _ := httpGet(r.Context(), catalogServiceURL + "/catalog/product/" + url.QueryEscape(productID))
 	if product == nil { product = map[string]interface{}{"id": productID, "price": 29.99} }
 	cart := map[string]interface{}{"user_id": userID, "items": []interface{}{}, "total": 0.0}
 	if redisClient != nil {
@@ -308,6 +434,14 @@ func main() {
 	mux.HandleFunc("/admin/config", adminConfigHandler)
 	mux.HandleFunc("/cart/", metricsMiddleware(cartRouter))
 
+	shutdownTracer := initTracer()
+	defer shutdownTracer()
+	handler := otelhttp.NewHandler(annotateHTTPSpan(mux), serviceName,
+		otelhttp.WithSpanNameFormatter(spanNameFromRequest),
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			return r.URL.Path != "/metrics" && r.URL.Path != "/health"
+		}),
+	)
 	log.Printf("%s listening on %s", serviceName, listenAddr)
-	log.Fatal(http.ListenAndServe(listenAddr, mux))
+	log.Fatal(http.ListenAndServe(listenAddr, handler))
 }

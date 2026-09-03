@@ -28,11 +28,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: analytics-service
-        image: docker.io/causely-oss/analytics-service:v1
+        image: docker.io/causely-oss/analytics-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8107
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: analytics-service
         - name: REPORTING_SERVICE_URL
@@ -87,7 +97,7 @@ spec:
     spec:
       containers:
       - name: api-gateway
-        image: docker.io/causely-oss/api-gateway:v1
+        image: docker.io/causely-oss/api-gateway:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8081
@@ -99,6 +109,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: api-gateway
         - name: CHECKOUT_URL
@@ -166,11 +186,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: audit-service
-        image: docker.io/causely-oss/audit-service:v1
+        image: docker.io/causely-oss/audit-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8105
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: audit-service
         - name: KAFKA_BROKERS
@@ -228,7 +258,7 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: auth-service
-        image: docker.io/causely-oss/auth-service:v1
+        image: docker.io/causely-oss/auth-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8084
@@ -240,6 +270,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: auth-service
         - name: SESSION_SERVICE_URL
@@ -301,11 +341,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: billing-service
-        image: docker.io/causely-oss/billing-service:v1
+        image: docker.io/causely-oss/billing-service:v3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8091
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: billing-service
         - name: PAYMENT_ADAPTER_URL
@@ -364,11 +414,21 @@ spec:
     spec:
       containers:
       - name: cache-service
-        image: docker.io/causely-oss/cache-service:v1
+        image: docker.io/causely-oss/cache-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8109
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: cache-service
         - name: REDIS_URL
@@ -419,7 +479,7 @@ spec:
     spec:
       containers:
       - name: cart-service
-        image: docker.io/causely-oss/cart-service:v1
+        image: docker.io/causely-oss/cart-service:v3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8101
@@ -431,6 +491,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: cart-service
         - name: CATALOG_SERVICE_URL
@@ -487,7 +557,7 @@ spec:
     spec:
       containers:
       - name: catalog-service
-        image: docker.io/causely-oss/catalog-service:v1
+        image: docker.io/causely-oss/catalog-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8102
@@ -499,6 +569,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: catalog-service
         - name: REVIEW_SERVICE_URL
@@ -564,7 +644,7 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: checkout
-        image: docker.io/causely-oss/checkout:v1
+        image: docker.io/causely-oss/checkout:v3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8082
@@ -576,6 +656,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: checkout
         - name: PAYMENTS_API_URL
@@ -638,11 +728,21 @@ spec:
     spec:
       containers:
       - name: delivery-service
-        image: docker.io/causely-oss/delivery-service:v1
+        image: docker.io/causely-oss/delivery-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8096
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: delivery-service
         - name: NOTIFICATION_SERVICE_URL
@@ -697,11 +797,21 @@ spec:
     spec:
       containers:
       - name: discount-service
-        image: docker.io/causely-oss/discount-service:v1
+        image: docker.io/causely-oss/discount-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8098
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: discount-service
         - name: LOYALTY_SERVICE_URL
@@ -754,7 +864,7 @@ spec:
     spec:
       containers:
       - name: email-service
-        image: docker.io/causely-oss/email-service:v1
+        image: docker.io/causely-oss/email-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8108
@@ -766,6 +876,16 @@ spec:
           periodSeconds: 10
           failureThreshold: 5
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: email-service
 ---
@@ -807,7 +927,7 @@ spec:
     spec:
       containers:
       - name: external-payment-api
-        image: docker.io/causely-oss/external-payment-api:v1
+        image: docker.io/causely-oss/external-payment-api:v3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8115
@@ -819,6 +939,16 @@ spec:
           periodSeconds: 10
           failureThreshold: 5
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: external-payment-api
 ---
@@ -860,11 +990,21 @@ spec:
     spec:
       containers:
       - name: fraud-detection
-        image: docker.io/causely-oss/fraud-detection:v1
+        image: docker.io/causely-oss/fraud-detection:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8111
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: fraud-detection
         - name: REDIS_URL
@@ -918,7 +1058,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: docker.io/causely-oss/frontend:v1
+        image: docker.io/causely-oss/frontend:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
@@ -931,6 +1071,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: frontend
         - name: API_GATEWAY_URL
@@ -995,11 +1145,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: ingest-service
-        image: docker.io/causely-oss/ingest-service:v1
+        image: docker.io/causely-oss/ingest-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8093
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: ingest-service
         - name: KAFKA_BROKERS
@@ -1057,11 +1217,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: inventory-service
-        image: docker.io/causely-oss/inventory-service:v1
+        image: docker.io/causely-oss/inventory-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8086
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: inventory-service
         - name: WAREHOUSE_SERVICE_URL
@@ -1118,11 +1288,21 @@ spec:
     spec:
       containers:
       - name: loyalty-service
-        image: docker.io/causely-oss/loyalty-service:v1
+        image: docker.io/causely-oss/loyalty-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8104
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: loyalty-service
         - name: USER_SERVICE_URL
@@ -1177,11 +1357,21 @@ spec:
     spec:
       containers:
       - name: media-service
-        image: docker.io/causely-oss/media-service:v1
+        image: docker.io/causely-oss/media-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8114
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: media-service
         - name: CACHE_SERVICE_URL
@@ -1239,11 +1429,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: notification-service
-        image: docker.io/causely-oss/notification-service:v1
+        image: docker.io/causely-oss/notification-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8100
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: notification-service
         - name: EMAIL_SERVICE_URL
@@ -1303,7 +1503,7 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: orders-service
-        image: docker.io/causely-oss/orders-service:v1
+        image: docker.io/causely-oss/orders-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8085
@@ -1315,6 +1515,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: orders-service
         - name: INVENTORY_SERVICE_URL
@@ -1371,11 +1581,21 @@ spec:
     spec:
       containers:
       - name: payment-adapter
-        image: docker.io/causely-oss/payment-adapter:v1
+        image: docker.io/causely-oss/payment-adapter:v3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8092
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: payment-adapter
         - name: EXTERNAL_PAYMENT_URL
@@ -1436,7 +1656,7 @@ spec:
           payments-db..."; sleep 2; done
       containers:
       - name: payments-api
-        image: docker.io/causely-oss/payments-api:v1
+        image: docker.io/causely-oss/payments-api:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8083
@@ -1448,6 +1668,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: payments-api
         - name: DATABASE_URL
@@ -1498,11 +1728,21 @@ spec:
     spec:
       containers:
       - name: pricing-service
-        image: docker.io/causely-oss/pricing-service:v1
+        image: docker.io/causely-oss/pricing-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8097
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: pricing-service
         - name: DISCOUNT_SERVICE_URL
@@ -1566,11 +1806,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: processing-service
-        image: docker.io/causely-oss/processing-service:v1
+        image: docker.io/causely-oss/processing-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8094
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: processing-service
         - name: KAFKA_BROKERS
@@ -1621,11 +1871,21 @@ spec:
     spec:
       containers:
       - name: profile-service
-        image: docker.io/causely-oss/profile-service:v1
+        image: docker.io/causely-oss/profile-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8090
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: profile-service
         - name: USER_SERVICE_URL
@@ -1682,7 +1942,7 @@ spec:
     spec:
       containers:
       - name: ranking-service
-        image: docker.io/causely-oss/ranking-service:v1
+        image: docker.io/causely-oss/ranking-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8089
@@ -1694,6 +1954,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: ranking-service
         - name: PROFILE_SERVICE_URL
@@ -1757,7 +2027,7 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: recommendation-service
-        image: docker.io/causely-oss/recommendation-service:v1
+        image: docker.io/causely-oss/recommendation-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8095
@@ -1769,6 +2039,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: recommendation-service
         - name: ANALYTICS_SERVICE_URL
@@ -1829,11 +2109,21 @@ spec:
     spec:
       containers:
       - name: reporting-service
-        image: docker.io/causely-oss/reporting-service:v1
+        image: docker.io/causely-oss/reporting-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8110
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: reporting-service
         - name: CACHE_SERVICE_URL
@@ -1891,11 +2181,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: review-service
-        image: docker.io/causely-oss/review-service:v1
+        image: docker.io/causely-oss/review-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8103
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: review-service
         - name: RECOMMENDATION_SERVICE_URL
@@ -1959,7 +2259,7 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: search-service
-        image: docker.io/causely-oss/search-service:v1
+        image: docker.io/causely-oss/search-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8088
@@ -1971,6 +2271,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: search-service
         - name: RANKING_SERVICE_URL
@@ -2012,7 +2322,7 @@ metadata:
   labels:
     service: session-service
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: session-service
@@ -2027,11 +2337,21 @@ spec:
     spec:
       containers:
       - name: session-service
-        image: docker.io/causely-oss/session-service:v1
+        image: docker.io/causely-oss/session-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8106
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: session-service
         - name: REDIS_URL
@@ -2089,11 +2409,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: shipping-service
-        image: docker.io/causely-oss/shipping-service:v1
+        image: docker.io/causely-oss/shipping-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8087
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: shipping-service
         - name: WAREHOUSE_SERVICE_URL
@@ -2152,7 +2482,7 @@ spec:
     spec:
       containers:
       - name: tax-service
-        image: docker.io/causely-oss/tax-service:v1
+        image: docker.io/causely-oss/tax-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8112
@@ -2164,6 +2494,16 @@ spec:
           periodSeconds: 10
           failureThreshold: 5
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: tax-service
 ---
@@ -2205,7 +2545,7 @@ spec:
     spec:
       containers:
       - name: user-service
-        image: docker.io/causely-oss/user-service:v1
+        image: docker.io/causely-oss/user-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8099
@@ -2217,6 +2557,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: user-service
         - name: CACHE_SERVICE_URL
@@ -2274,11 +2624,21 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: warehouse-service
-        image: docker.io/causely-oss/warehouse-service:v1
+        image: docker.io/causely-oss/warehouse-service:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8113
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: warehouse-service
         - name: KAFKA_BROKERS

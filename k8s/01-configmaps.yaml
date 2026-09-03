@@ -1,14 +1,14 @@
 ---
 # ── Grafana dashboard ──────────────────────────────────────────────────────────
-# Loaded into the shared Grafana in the monitoring namespace by its
-# grafana-sc-dashboard sidecar, which watches ALL namespaces for ConfigMaps
-# labeled grafana_dashboard=1. Uses the "Prometheus" datasource already
-# provisioned there (pointed at kube-prometheus-stack-prometheus.monitoring).
+# Loaded by grafana-sc-dashboard in the monitoring Grafana. That sidecar
+# always watches the monitoring namespace; putting the ConfigMap here (not
+# scenario-01) avoids depending on searchNamespace: ALL.
+# Panels use the "Prometheus" datasource provisioned by kube-prometheus-stack.
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard
-  namespace: scenario-01
+  name: grafana-dashboard-scenario-01
+  namespace: monitoring
   labels:
     grafana_dashboard: "1"
 data:

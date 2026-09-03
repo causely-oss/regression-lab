@@ -12,6 +12,18 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"context"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	oteltrace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"github.com/IBM/sarama"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -76,9 +88,12 @@ func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
 	json.NewEncoder(w).Encode(data)
 }
 
-func httpGet(url string) (map[string]interface{}, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(url)
+func httpGet(ctx context.Context, url string) (map[string]interface{}, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := otelHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +103,13 @@ func httpGet(url string) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func httpPost(url string) (map[string]interface{}, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Post(url, "application/json", nil)
+func httpPost(ctx context.Context, url string) (map[string]interface{}, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := otelHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +118,7 @@ func httpPost(url string) (map[string]interface{}, error) {
 	json.NewDecoder(resp.Body).Decode(&result)
 	return result, nil
 }
+
 
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -202,6 +222,98 @@ func kafkaSend(topic string, data map[string]interface{}) {
 	}
 }
 
+
+var otelHTTPClient = &http.Client{
+	Timeout:   5 * time.Second,
+	Transport: otelhttp.NewTransport(http.DefaultTransport),
+}
+
+
+func otlpHTTPHostPort(raw string) string {
+	u := strings.TrimSpace(raw)
+	u = strings.TrimPrefix(u, "https://")
+	u = strings.TrimPrefix(u, "http://")
+	if i := strings.Index(u, "/"); i >= 0 {
+		u = u[:i]
+	}
+	return strings.TrimSuffix(u, "/")
+}
+
+func annotateHTTPSpan(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		if span := oteltrace.SpanFromContext(r.Context()); span.IsRecording() {
+			span.SetAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.route", r.URL.Path),
+				attribute.String("http.target", r.URL.Path),
+				attribute.Int("http.status_code", rec.statusCode),
+			)
+		}
+	})
+}
+
+func spanNameFromRequest(_ string, r *http.Request) string {
+	return r.Method + " " + r.URL.Path
+}
+
+func initTracer() func() {
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		return func() {}
+	}
+	ctx := context.Background()
+	opts := []otlptracehttp.Option{
+		otlptracehttp.WithInsecure(),
+		otlptracehttp.WithEndpoint(otlpHTTPHostPort(endpoint)),
+	}
+	exp, err := otlptracehttp.New(ctx, opts...)
+	if err != nil {
+		log.Printf("otel exporter init failed: %v", err)
+		return func() {}
+	}
+	name := os.Getenv("OTEL_SERVICE_NAME")
+	if name == "" {
+		name = serviceName
+	}
+	res := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceName(name),
+	)
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(res),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+	var mp *sdkmetric.MeterProvider
+	mexp, merr := otlpmetrichttp.New(ctx,
+		otlpmetrichttp.WithInsecure(),
+		otlpmetrichttp.WithEndpoint(otlpHTTPHostPort(endpoint)),
+	)
+	if merr != nil {
+		log.Printf("otel metric exporter init failed: %v", merr)
+	} else {
+		mp = sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(mexp)),
+			sdkmetric.WithResource(res),
+		)
+		otel.SetMeterProvider(mp)
+	}
+	return func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = tp.Shutdown(shutdownCtx)
+		if mp != nil {
+			_ = mp.Shutdown(shutdownCtx)
+		}
+	}
+}
+
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, http.StatusOK, map[string]string{"service": serviceName, "status": "ok"})
 }
@@ -222,20 +334,20 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ordersProcessed.WithLabelValues("http").Inc()
-	invData, _ := httpGet(inventoryServiceURL + "/inventory/status?order_id=" + url.QueryEscape(orderID))
+	invData, _ := httpGet(r.Context(), inventoryServiceURL + "/inventory/status?order_id=" + url.QueryEscape(orderID))
 	if invData == nil {
 		invData = map[string]interface{}{"status": "unknown"}
 	}
 	// Fire-and-forget: notify about order access
 	go func() {
-		_, err := httpPost(notificationServiceURL + "/notify?user_id=user-1&message=" + url.QueryEscape("Order "+orderID+" accessed"))
+		_, err := httpPost(context.Background(), notificationServiceURL + "/notify?user_id=user-1&message=" + url.QueryEscape("Order "+orderID+" accessed"))
 		if err != nil {
 			log.Printf("WARNING: notification-service call failed: %v", err)
 		}
 	}()
 	// Fire-and-forget: check shipping status
 	go func() {
-		_, err := httpGet(shippingServiceURL + "/shipping/status?order_id=" + url.QueryEscape(orderID))
+		_, err := httpGet(context.Background(), shippingServiceURL + "/shipping/status?order_id=" + url.QueryEscape(orderID))
 		if err != nil {
 			log.Printf("WARNING: shipping-service call failed: %v", err)
 		}
@@ -300,7 +412,7 @@ func consumeKafka(brokers, topic, groupID string) {
 			// Call inventory to reserve
 			checkoutID, _ := data["checkout_id"].(string)
 			if checkoutID == "" { checkoutID = "unknown" }
-			httpPost(inventoryServiceURL + "/inventory/reserve?order_id=" + url.QueryEscape(checkoutID) + "&items=item-1,item-2")
+			httpPost(context.Background(), inventoryServiceURL + "/inventory/reserve?order_id=" + url.QueryEscape(checkoutID) + "&items=item-1,item-2")
 			// Produce inventory-updates
 			kafkaSend("regression-lab-inventory-updates", map[string]interface{}{
 				"order_id": checkoutID, "status": "reserved",
@@ -330,6 +442,11 @@ func main() {
 	mux.HandleFunc("/orders/", metricsMiddleware(ordersRouter))
 	mux.HandleFunc("/orders", metricsMiddleware(ordersRouter))
 
+	shutdownTracer := initTracer()
+	defer shutdownTracer()
+	handler := otelhttp.NewHandler(mux, serviceName, otelhttp.WithFilter(func(r *http.Request) bool {
+		return r.URL.Path != "/metrics" && r.URL.Path != "/health"
+	}))
 	log.Printf("%s listening on %s", serviceName, listenAddr)
-	log.Fatal(http.ListenAndServe(listenAddr, mux))
+	log.Fatal(http.ListenAndServe(listenAddr, handler))
 }

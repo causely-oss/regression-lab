@@ -2,7 +2,13 @@ module frontend
 
 go 1.25.0
 
-require github.com/prometheus/client_golang v1.19.0
+require (
+	github.com/prometheus/client_golang v1.19.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0
+	go.opentelemetry.io/otel v1.36.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.36.0
+	go.opentelemetry.io/otel/sdk v1.36.0
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

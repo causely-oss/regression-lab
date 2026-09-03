@@ -129,7 +129,18 @@ def gen_dockerfile(svc_name, port):
 
 def go_header(svc_name, port, imports):
     """Standard package + import block."""
+    extras = [
+        "context",
+        "strings",
+        "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp",
+        "go.opentelemetry.io/otel",
+        "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp",
+        "go.opentelemetry.io/otel/propagation",
+        "go.opentelemetry.io/otel/sdk/resource",
+    ]
+    imports = list(dict.fromkeys(list(imports) + extras))
     import_block = "\n".join(f'\t"{imp}"' for imp in imports)
+    import_block += "\n\tsdktrace \"go.opentelemetry.io/otel/sdk/trace\"\n\tsemconv \"go.opentelemetry.io/otel/semconv/v1.26.0\""
     return f'''package main
 
 import (
@@ -196,9 +207,57 @@ func jsonResponse(w http.ResponseWriter, status int, data interface{}) {
 \tjson.NewEncoder(w).Encode(data)
 }
 
-func httpGet(url string) (map[string]interface{}, error) {
-\tclient := &http.Client{Timeout: 5 * time.Second}
-\tresp, err := client.Get(url)
+var otelHTTPClient = &http.Client{
+\tTimeout:   5 * time.Second,
+\tTransport: otelhttp.NewTransport(http.DefaultTransport),
+}
+
+func initTracer() func() {
+\tendpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+\tif endpoint == "" {
+\t\treturn func() {}
+\t}
+\tctx := context.Background()
+\topts := []otlptracehttp.Option{otlptracehttp.WithInsecure()}
+\tif strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+\t\topts = append(opts, otlptracehttp.WithEndpointURL(endpoint))
+\t} else {
+\t\topts = append(opts, otlptracehttp.WithEndpoint(endpoint))
+\t}
+\texp, err := otlptracehttp.New(ctx, opts...)
+\tif err != nil {
+\t\tlog.Printf("otel exporter init failed: %v", err)
+\t\treturn func() {}
+\t}
+\tname := os.Getenv("OTEL_SERVICE_NAME")
+\tif name == "" {
+\t\tname = serviceName
+\t}
+\ttp := sdktrace.NewTracerProvider(
+\t\tsdktrace.WithBatcher(exp),
+\t\tsdktrace.WithResource(resource.NewWithAttributes(
+\t\t\tsemconv.SchemaURL,
+\t\t\tsemconv.ServiceName(name),
+\t\t)),
+\t)
+\totel.SetTracerProvider(tp)
+\totel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+\t\tpropagation.TraceContext{},
+\t\tpropagation.Baggage{},
+\t))
+\treturn func() {
+\t\tshutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+\t\tdefer cancel()
+\t\t_ = tp.Shutdown(shutdownCtx)
+\t}
+}
+
+func httpGet(ctx context.Context, url string) (map[string]interface{}, error) {
+\treq, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+\tif err != nil {
+\t\treturn nil, err
+\t}
+\tresp, err := otelHTTPClient.Do(req)
 \tif err != nil {
 \t\treturn nil, err
 \t}
@@ -208,9 +267,13 @@ func httpGet(url string) (map[string]interface{}, error) {
 \treturn result, nil
 }
 
-func httpPost(url string) (map[string]interface{}, error) {
-\tclient := &http.Client{Timeout: 5 * time.Second}
-\tresp, err := client.Post(url, "application/json", nil)
+func httpPost(ctx context.Context, url string) (map[string]interface{}, error) {
+\treq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+\tif err != nil {
+\t\treturn nil, err
+\t}
+\treq.Header.Set("Content-Type", "application/json")
+\tresp, err := otelHTTPClient.Do(req)
 \tif err != nil {
 \t\treturn nil, err
 \t}
@@ -507,8 +570,13 @@ func main() {{
 \tmux.HandleFunc("/metrics", metricsHandler)
 {route_code}
 
+\tshutdownTracer := initTracer()
+\tdefer shutdownTracer()
+\thandler := otelhttp.NewHandler(mux, serviceName, otelhttp.WithFilter(func(r *http.Request) bool {{
+\t\treturn r.URL.Path != "/metrics" && r.URL.Path != "/health"
+\t}}))
 \tlog.Printf("%s listening on %s", serviceName, listenAddr)
-\tlog.Fatal(http.ListenAndServe(listenAddr, mux))
+\tlog.Fatal(http.ListenAndServe(listenAddr, handler))
 }}
 '''
 
@@ -3296,6 +3364,16 @@ def gen_k8s_app_yaml():
             lines.append("              memory: 256Mi")
 
         lines.append("          env:")
+        lines.append("            - name: OTEL_EXPORTER_OTLP_ENDPOINT")
+        lines.append('              value: "http://otel-collector:4318"')
+        lines.append("            - name: OTEL_EXPORTER_OTLP_INSECURE")
+        lines.append('              value: "true"')
+        lines.append("            - name: OTEL_TRACES_EXPORTER")
+        lines.append('              value: "otlp"')
+        lines.append("            - name: OTEL_METRICS_EXPORTER")
+        lines.append('              value: "otlp"')
+        lines.append("            - name: OTEL_PROPAGATORS")
+        lines.append('              value: "tracecontext,baggage"')
         lines.append("            - name: OTEL_SERVICE_NAME")
         lines.append(f'              value: "{svc_name}"')
         if env_vars:

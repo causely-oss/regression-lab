@@ -125,10 +125,50 @@ spec:
       targetPort: 9308
 
 ---
-# ── Scrape config for the cluster's shared Prometheus (monitoring namespace) ──
-# Picked up because kube-prometheus-stack-prometheus's scrapeConfigSelector
-# matches release: kube-prometheus-stack and scrapeConfigNamespaceSelector is {}
-# (all namespaces). Replicates the old annotation-based pod discovery.
+# ── PodMonitor for kube-prometheus-stack (monitoring namespace) ───────────────
+# This cluster's Prometheus is configured for PodMonitor/ServiceMonitor
+# (podMonitorSelectorNilUsesHelmValues: false). ScrapeConfig CRs are often
+# ignored. Same annotation-based discovery as before.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: scenario-01-pods
+  namespace: scenario-01
+  labels:
+    release: kube-prometheus-stack
+spec:
+  jobLabel: app
+  namespaceSelector:
+    matchNames:
+      - scenario-01
+  selector:
+    matchExpressions:
+      - key: app
+        operator: Exists
+  podMetricsEndpoints:
+    - interval: 15s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+          action: keep
+          regex: "true"
+        - sourceLabels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+          action: replace
+          targetLabel: __metrics_path__
+          regex: (.+)
+        - sourceLabels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+          action: replace
+          regex: ([^:]+)(?::[0-9]+)?;([0-9]+)
+          replacement: $1:$2
+          targetLabel: __address__
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: namespace
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_label_app]
+          targetLabel: job
+
+---
+# Kept for clusters that do select ScrapeConfigs. Harmless if unused.
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: ScrapeConfig
 metadata:

@@ -17,6 +17,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	oteltrace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 // ── Prometheus metrics ──────────────────────────────────────────────────────
@@ -192,6 +203,92 @@ func processPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+
+func otlpHTTPHostPort(raw string) string {
+	u := strings.TrimSpace(raw)
+	u = strings.TrimPrefix(u, "https://")
+	u = strings.TrimPrefix(u, "http://")
+	if i := strings.Index(u, "/"); i >= 0 {
+		u = u[:i]
+	}
+	return strings.TrimSuffix(u, "/")
+}
+
+func annotateHTTPSpan(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		if span := oteltrace.SpanFromContext(r.Context()); span.IsRecording() {
+			span.SetAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.route", r.URL.Path),
+				attribute.String("http.target", r.URL.Path),
+				attribute.Int("http.status_code", rec.statusCode),
+			)
+		}
+	})
+}
+
+func spanNameFromRequest(_ string, r *http.Request) string {
+	return r.Method + " " + r.URL.Path
+}
+
+func initTracer() func() {
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		return func() {}
+	}
+	ctx := context.Background()
+	opts := []otlptracehttp.Option{
+		otlptracehttp.WithInsecure(),
+		otlptracehttp.WithEndpoint(otlpHTTPHostPort(endpoint)),
+	}
+	exp, err := otlptracehttp.New(ctx, opts...)
+	if err != nil {
+		log.Printf("otel exporter init failed: %v", err)
+		return func() {}
+	}
+	name := os.Getenv("OTEL_SERVICE_NAME")
+	if name == "" {
+		name = "payments-api"
+	}
+	res := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceName(name),
+	)
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(res),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+	var mp *sdkmetric.MeterProvider
+	mexp, merr := otlpmetrichttp.New(ctx,
+		otlpmetrichttp.WithInsecure(),
+		otlpmetrichttp.WithEndpoint(otlpHTTPHostPort(endpoint)),
+	)
+	if merr != nil {
+		log.Printf("otel metric exporter init failed: %v", merr)
+	} else {
+		mp = sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(mexp)),
+			sdkmetric.WithResource(res),
+		)
+		otel.SetMeterProvider(mp)
+	}
+	return func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = tp.Shutdown(shutdownCtx)
+		if mp != nil {
+			_ = mp.Shutdown(shutdownCtx)
+		}
+	}
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────
 
 func main() {
@@ -224,7 +321,12 @@ func main() {
 	mux.HandleFunc("/payments/process", processPaymentHandler)
 	mux.Handle("/metrics", promhttp.Handler())
 
-	handler := metricsMiddleware(mux)
+	shutdownTracer := initTracer()
+	defer shutdownTracer()
+
+	handler := otelhttp.NewHandler(metricsMiddleware(mux), "payments-api", otelhttp.WithFilter(func(r *http.Request) bool {
+		return r.URL.Path != "/metrics" && r.URL.Path != "/health"
+	}))
 
 	srv := &http.Server{
 		Addr:    ":8083",
