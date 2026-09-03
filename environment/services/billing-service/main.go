@@ -363,6 +363,7 @@ func chargeHandler(w http.ResponseWriter, r *http.Request) {
 	// Process via payment adapter
 	payData, err := httpPost(r.Context(), paymentAdapterURL + "/pay?invoice_id=" + url.QueryEscape(invoiceID) + "&amount=" + fmt.Sprintf("%.2f", total))
 	if err != nil {
+		log.Printf("WARN: payment-adapter call failed for invoice %s: %v", invoiceID, err)
 		billingOutcomes.WithLabelValues("payment_failed").Inc()
 		http.Error(w, "Payment adapter failed", http.StatusBadGateway)
 		return
