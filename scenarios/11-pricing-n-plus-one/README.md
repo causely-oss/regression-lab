@@ -1,7 +1,8 @@
 # Scenario 11: pricing-service calls discount-service once per cart item
 
 **Fix type:** application code (Go)
-**Branch with the regression:** `scenario-11-pricing-n-plus-one-bug`
+**Descriptive branch (operator reference only, do not deploy from this):** `scenario-11-pricing-n-plus-one-bug`
+**Branch to deploy for an agent test:** `feat/per-sku-discount-pricing` (forks from `main`, no `scenarios/` directory or scenario-named history in its tree — see [Blind-test hygiene](../README.md#blind-test-hygiene--every-scenario-has-two-branches))
 **Affected services:** `pricing-service` (port 8097) calling `discount-service` (port 8098)
 
 ## Normal state
@@ -51,11 +52,21 @@ call pattern is wrong, not the callee.
 
 ## Deploy / verify
 
+Operator steps, from this repo checkout (has `scenarios/`, fine for you):
+
 ```bash
-git checkout scenario-11-pricing-n-plus-one-bug
+git checkout feat/per-sku-discount-pricing
 bash scenarios/11-pricing-n-plus-one/deploy.sh   # builds+pushes pricing-service, rolls it out
-# ... let load run, observe via Causely MCP tools ...
-# agent fixes environment/services/pricing-service/main.go, opens a PR onto main
-git checkout <fix-branch>
+```
+
+Then hand the agent under test a **separate** clone/worktree of
+`feat/per-sku-discount-pricing` only (not this checkout — see
+[Blind-test hygiene](../README.md#blind-test-hygiene--every-scenario-has-two-branches)).
+It should open its fix PR against `main`.
+
+To verify a fix and reset:
+
+```bash
+git checkout <agent's fix branch or commit>
 bash scenarios/11-pricing-n-plus-one/deploy.sh
 ```

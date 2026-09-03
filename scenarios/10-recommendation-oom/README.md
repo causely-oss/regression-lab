@@ -1,7 +1,8 @@
 # Scenario 10: recommendation-service memory limit set too low
 
 **Fix type:** Kubernetes manifest (no app code touched)
-**Branch with the regression:** `scenario-10-recommendation-oom-bug`
+**Descriptive branch (operator reference only, do not deploy from this):** `scenario-10-recommendation-oom-bug`
+**Branch to deploy for an agent test:** `chore/service-resource-rightsizing` (forks from `main`, no `scenarios/` directory or scenario-named history in its tree — see [Blind-test hygiene](../README.md#blind-test-hygiene--every-scenario-has-two-branches))
 **Affected service:** `recommendation-service` (port 8095)
 
 ## Normal state
@@ -48,13 +49,23 @@ manifest change; no Go code should need to change for this scenario.
 
 ## Deploy / verify
 
+Operator steps, from this repo checkout (has `scenarios/`, fine for you):
+
 ```bash
-git checkout scenario-10-recommendation-oom-bug
+git checkout chore/service-resource-rightsizing
 kubectl apply -f k8s/03-app.yaml -n scenario-01
 kubectl rollout status deploy/recommendation-service -n scenario-01 --timeout=120s
-# ... let load run for a few minutes, observe via Causely MCP tools ...
-# agent fixes k8s/03-app.yaml, opens a PR onto main
-git checkout <fix-branch>
+```
+
+Then hand the agent under test a **separate** clone/worktree of
+`chore/service-resource-rightsizing` only (not this checkout — see
+[Blind-test hygiene](../README.md#blind-test-hygiene--every-scenario-has-two-branches)).
+It should open its fix PR against `main`.
+
+To verify a fix and reset:
+
+```bash
+git checkout <agent's fix branch or commit>
 kubectl apply -f k8s/03-app.yaml -n scenario-01
 ```
 

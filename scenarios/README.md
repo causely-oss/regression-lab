@@ -40,6 +40,50 @@ alone — without being told to inspect git history — arrives at the fix by
 reading and reasoning about the current code, not by finding and undoing a
 commit.
 
+## Blind-test hygiene — every scenario has two branches
+
+Every scenario exists as **two** branches, and they are not interchangeable:
+
+- **`scenario-NN-<slug>-bug`** — the descriptive, documented branch (this is
+  what these READMEs reference by name). It forks from `scenario-01-otel-request-rates`,
+  which also carries this whole `scenarios/` directory in its tree. **Never
+  check this branch out into a workspace an agent under test can read** — the
+  branch name and the `scenarios/` directory sitting right there in the tree
+  are the answer key.
+- **A neutrally-named branch off `main`** (e.g. `chore/billing-http-client-pooling`,
+  `chore/service-resource-rightsizing`, `feat/per-sku-discount-pricing`) —
+  the same regression + filler commits, forked from `main` before any of this
+  documentation existed, so its tree and history contain nothing scenario-related.
+  **This is the branch to give the agent under test.**
+
+This split exists because of a real failure: an early run against scenario 9
+had an agent (with full local repo + kubectl + shell access) diagnose the
+issue correctly but explicitly call it out as "the scenario-09 billing-timeout
+regression" and refer to "the trigger" — vocabulary lifted straight from this
+README, which was sitting in its working tree. A second leak in the same run:
+the deployed image was tagged `causely-oss/billing-service:scenario-09`, visible
+via a plain `kubectl describe pod`. Both are structural risks any time the
+investigating agent has shell/git/kubectl access (not just when it's scoped to
+Causely MCP tools) — the environment itself must not be able to say its own
+scenario number out loud.
+
+When handing off to an agent under test:
+
+1. **Deploy from the neutral branch**, not the descriptive one — `git checkout
+   <neutral-branch>` before running `deploy.sh`, so the running image and the
+   working tree it was built from are both clean.
+2. **Give the agent its own clone/worktree of the neutral branch only**
+   (e.g. `git clone --single-branch --branch <neutral-branch> <repo> <path>`
+   or `git worktree add <path> <neutral-branch>`) — not this repo checkout,
+   which has every `scenario-NN-*-bug` branch and this `scenarios/` directory
+   sitting in the same local `.git`, all reachable via `git branch -a` /
+   `git log --all` regardless of what's checked out.
+3. **Verify the deployed image tag has no scenario-identifying string** —
+   `deploy.sh` tags builds as `build-<short-sha>` for exactly this reason;
+   don't override `TAG` with something scenario-named.
+4. The agent's fix PR should target `main` (or wherever the neutral branch's
+   fix should land), not the descriptive `scenario-NN-*-bug` branch.
+
 ## Grading
 
 Grade the resulting code/config state and whether the symptom clears, not
@@ -48,8 +92,8 @@ written fix that is behaviorally correct should pass.
 
 ## Scenarios
 
-| # | Slug | Fix type | Service | Symptom |
-|---|------|----------|---------|---------|
-| 9 | [billing-missing-timeout](09-billing-missing-timeout/README.md) | App code | `billing-service` | Rising latency / stuck in-flight requests during a downstream blip that used to be bounded |
-| 10 | [recommendation-oom](10-recommendation-oom/README.md) | K8s config | `recommendation-service` | OOMKilled / CrashLoopBackOff under normal load |
-| 11 | [pricing-n-plus-one](11-pricing-n-plus-one/README.md) | App code | `pricing-service` / `discount-service` | `discount-service` call rate & latency scale with cart size instead of request rate |
+| # | Slug | Fix type | Service | Deploy branch (agent-facing) |
+|---|------|----------|---------|-------------------------------|
+| 9 | [billing-missing-timeout](09-billing-missing-timeout/README.md) | App code | `billing-service` | `chore/billing-http-client-pooling` |
+| 10 | [recommendation-oom](10-recommendation-oom/README.md) | K8s config | `recommendation-service` | `chore/service-resource-rightsizing` |
+| 11 | [pricing-n-plus-one](11-pricing-n-plus-one/README.md) | App code | `pricing-service` / `discount-service` | `feat/per-sku-discount-pricing` |
