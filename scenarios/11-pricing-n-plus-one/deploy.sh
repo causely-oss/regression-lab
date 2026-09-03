@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# deploy.sh — build + push + roll out pricing-service from the currently
-# checked-out branch (bug branch or fix branch, doesn't matter which).
+# deploy.sh — build + push + roll out pricing-service from whatever is
+# currently checked out (bug tree or fix tree, doesn't matter which).
 #
 # The live deployment normally pins pricing-service to an immutable tag
-# (e.g. :v2) with imagePullPolicy: IfNotPresent, so a plain `docker push` +
-# `rollout restart` to that same tag (or to :latest) will NOT pull your new
-# build — the node already has something cached under that reference. This
-# script points the deployment at a dedicated :scenario-11 tag and forces
-# imagePullPolicy: Always so every run actually deploys what you just built,
-# whether it's the bug branch or your fix branch.
+# (e.g. :v2), so a plain `docker push` + `rollout restart` to that same tag
+# (or to :latest) risks the node not pulling your new build. This script
+# tags the image with the current commit's short SHA (an ordinary-looking
+# build identifier, not anything scenario-named — an agent under test
+# should not be able to read "scenario-11" off `kubectl describe pod` or
+# `docker images`) and forces imagePullPolicy: Always so every run actually
+# deploys what you just built.
 #
 # Usage:
 #   git checkout scenario-11-pricing-n-plus-one-bug   # or your fix branch
@@ -19,9 +20,9 @@ set -euo pipefail
 NAMESPACE="${NAMESPACE:-scenario-01}"
 REGISTRY="${REGISTRY:-causely-oss}"
 SVC="pricing-service"
-TAG="scenario-11"
+TAG="build-$(git rev-parse --short=12 HEAD)"
 
-echo "=== Building $SVC from branch $(git rev-parse --abbrev-ref HEAD) ==="
+echo "=== Building $SVC from commit $(git rev-parse --short HEAD) ==="
 docker build --no-cache -t "${REGISTRY}/${SVC}:${TAG}" "environment/services/${SVC}"
 docker push "${REGISTRY}/${SVC}:${TAG}"
 
