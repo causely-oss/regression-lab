@@ -72,17 +72,30 @@ When handing off to an agent under test:
 1. **Deploy from the neutral branch**, not the descriptive one — `git checkout
    <neutral-branch>` before running `deploy.sh`, so the running image and the
    working tree it was built from are both clean.
-2. **Give the agent its own clone/worktree of the neutral branch only**
-   (e.g. `git clone --single-branch --branch <neutral-branch> <repo> <path>`
-   or `git worktree add <path> <neutral-branch>`) — not this repo checkout,
-   which has every `scenario-NN-*-bug` branch and this `scenarios/` directory
-   sitting in the same local `.git`, all reachable via `git branch -a` /
-   `git log --all` regardless of what's checked out.
+2. **Give the agent a genuinely separate `git clone`, not this checkout, and
+   not a `git worktree`.** Checking out the neutral branch in this same repo
+   (or `git worktree add`) does *not* isolate anything — a worktree shares
+   this repo's `.git` object database and refs, so `git branch -a` /
+   `git log --all` / `git show <other-branch>:<path>` still see every
+   `scenario-NN-*-bug` branch and this `scenarios/` directory no matter what's
+   checked out. Only a fresh clone, restricted to one branch, has none of that
+   in its object database to find. This repo's git root is one level up from
+   `regression-lab` (a shared monorepo with many unrelated branches too), so
+   clone from there:
+   ```bash
+   git clone --single-branch --branch <neutral-branch> --no-tags \
+     /path/to/your/regression-lab /path/for/agent
+   ```
+   Start the agent in `/path/for/agent/regression-lab`. Use a fresh destination
+   path per run — don't reuse one an earlier run may have touched.
 3. **Verify the deployed image tag has no scenario-identifying string** —
    `deploy.sh` tags builds as `build-<short-sha>` for exactly this reason;
    don't override `TAG` with something scenario-named.
 4. The agent's fix PR should target `main` (or wherever the neutral branch's
-   fix should land), not the descriptive `scenario-NN-*-bug` branch.
+   fix should land), not the descriptive `scenario-NN-*-bug` branch. If the
+   fix needs to land as a real GitHub PR, the neutral branch has to be pushed
+   to `origin` first — as of this writing none of the scenario branches
+   (neutral or descriptive) have been pushed; they're local-only.
 
 ## Grading
 
