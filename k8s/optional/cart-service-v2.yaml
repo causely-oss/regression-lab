@@ -33,6 +33,16 @@ spec:
             cpu: 500m
             memory: 256Mi
         env:
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: http://otel-collector:4318
+        - name: OTEL_EXPORTER_OTLP_INSECURE
+          value: "true"
+        - name: OTEL_TRACES_EXPORTER
+          value: otlp
+        - name: OTEL_METRICS_EXPORTER
+          value: otlp
+        - name: OTEL_PROPAGATORS
+          value: tracecontext,baggage
         - name: OTEL_SERVICE_NAME
           value: cart-service
         - name: CATALOG_SERVICE_URL

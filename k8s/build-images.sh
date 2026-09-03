@@ -13,7 +13,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICES_DIR="$SCRIPT_DIR/../environment/services"
 
 REGISTRY="${REGISTRY:-docker.io/causely-oss}"
-PLATFORM="${PLATFORM:-linux/amd64}"
+# GKE nodes in this demo are arm64; include amd64 for kind/local as well.
+PLATFORM="${PLATFORM:-linux/amd64,linux/arm64}"
 TAG="${TAG:-v1}"
 
 SERVICES=(
@@ -60,6 +61,7 @@ for svc in "${SERVICES[@]}"; do
   echo "=== Building ${REGISTRY}/${svc}:${TAG} for ${PLATFORM} ==="
   docker buildx build \
     --platform "${PLATFORM}" \
+    --provenance=false \
     -t "${REGISTRY}/${svc}:${TAG}" \
     --push \
     "${SERVICES_DIR}/${svc}"

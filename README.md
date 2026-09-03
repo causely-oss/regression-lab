@@ -211,9 +211,11 @@ registry or tag, set the `REGISTRY` and `TAG` environment variables:
 
 ```bash
 docker login
-bash k8s/build-images.sh                          # default: docker.io/causely-oss/*:v1
+bash k8s/build-images.sh                          # default: docker.io/causely-oss/*:v1 (linux/amd64,linux/arm64)
 REGISTRY=docker.io/myuser TAG=v2 bash k8s/build-images.sh  # example custom registry/tag
 ```
+
+The default platform list is `linux/amd64,linux/arm64`. That is required for the current GKE nodes (`arm64`). To build one arch only: `PLATFORM=linux/arm64 bash k8s/build-images.sh`.
 
 If you change the registry or tag, update `k8s/03-app.yaml` to match:
 ```bash
@@ -234,16 +236,18 @@ Alternatively, push to a registry (Docker Hub, GHCR, local registry) and skip th
 
 ### Cart Service Version Switching
 
-Two deployment files exist for the cart service — `v1` (in `k8s/03-app.yaml`) and `v2` (`k8s/cart-service-v2.yaml`). They are identical except for the image tag. Applying one replaces the other via a rolling update.
+`kubectl apply -f k8s/` deploys cart-service **v1** from `k8s/03-app.yaml`. The v2 overlay lives in `k8s/optional/` so it is **not** included in that apply (kubectl does not recurse into subdirectories).
 
-**Deploy v1 (default):**
-```bash
-kubectl apply -f k8s/03-app.yaml
-```
+v1 and v2 are identical except for the image tag. Applying v2 replaces the same Deployment via a rolling update. Build and push `:v2` first (`TAG=v2 bash k8s/build-images.sh`), then:
 
 **Deploy v2:**
 ```bash
-kubectl apply -f k8s/cart-service-v2.yaml
+kubectl apply -f k8s/optional/cart-service-v2.yaml
+```
+
+**Switch back to v1:**
+```bash
+kubectl apply -f k8s/03-app.yaml
 ```
 
 **Confirm which version is running:**
@@ -260,16 +264,18 @@ kubectl get deployment cart-service -n scenario-01 -o wide
 
 ### 2. Deploy the stack
 
-**minikube / kind (local)** — all services start at 1 replica:
+**minikube / kind (local)** — all services start at 1 replica, cart-service on v1:
 ```bash
 kubectl apply -f k8s/
-kubectl rollout restart deployment/prometheus -n scenario-01
-kubectl rollout status deployment/prometheus -n scenario-01
 ```
+
+This applies every manifest in `k8s/*.yaml` (namespace, configmaps, data stores, app, loadgen, observability, HPA). It does **not** apply `k8s/optional/` (cart-service v2).
 
 > **kind note:** if you loaded images locally (see above), the manifests use `imagePullPolicy: IfNotPresent` by default so the pre-loaded images are used without hitting the registry.
 
-> **Prometheus restart required:** Prometheus only reads its config at startup. The `rollout restart` above ensures it picks up the alert rules from the ConfigMap after the initial apply. Without it, `http://localhost:9090/alerts` will show no rules.
+> **Prometheus:** this stack does not run a Prometheus Deployment in `scenario-01`. Apply creates a `PodMonitor` / `ScrapeConfig` and `PrometheusRule` that kube-prometheus-stack in `monitoring` picks up. No rollout restart is needed.
+
+> **Traces and logs:** services export OTLP to the in-namespace `otel-collector` (same hop as `otel-demo`: app → `otel-collector:4318`). Traces go to Tempo and `mediator.observability-staging:4317` — the same OTLP endpoint otel-demo’s collector uses (`otlp/causely`). Metrics also go to `mediator.observability-chaos`. Logs stay on stdout; Promtail in `monitoring` ships them to Loki.
 
 > **kafka-exporter image:** The kafka-exporter uses a locally built image (`kafka-exporter:kind`) that must be loaded into kind before deploying. If the `kafka-exporter` pod shows `ImagePullBackOff`, run:
 > ```bash
@@ -280,11 +286,9 @@ kubectl rollout status deployment/prometheus -n scenario-01
 > kind load docker-image kafka-exporter:kind --name kind
 > ```
 
-**EKS / GKE / production cluster** — apply base then scale the 12 high-traffic services to 3 replicas:
+**EKS / GKE / production cluster** — apply the same default stack, then scale the 12 high-traffic services to 3 replicas:
 ```bash
 kubectl apply -f k8s/
-kubectl rollout restart deployment/prometheus -n scenario-01
-kubectl rollout status deployment/prometheus -n scenario-01
 bash k8s/production-scale.sh
 ```
 
@@ -305,14 +309,14 @@ kubectl get pods -n scenario-01 -w
 The node IP is not routable from the host on these platforms. Use port-forward:
 
 ```bash
-kubectl port-forward -n scenario-01 svc/grafana    3000:3000 &
-kubectl port-forward -n scenario-01 svc/prometheus 9090:9090 &
-kubectl port-forward -n scenario-01 svc/frontend   8080:8080 &
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80 &
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090 &
+kubectl port-forward -n scenario-01 svc/frontend 8080:8080 &
 ```
 
 Then open:
-- Grafana: http://localhost:3000
-- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000 (shared stack in `monitoring`)
+- Prometheus: http://localhost:9090 (targets should include `scenario-01-pods`)
 
 And use `http://localhost:8080` as the frontend URL for the load generator.
 

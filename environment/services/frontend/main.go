@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,17 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	oteltrace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 var (
@@ -109,10 +121,98 @@ func writeErrorJSON(w http.ResponseWriter, status int, detail string) {
 // proxyRequest performs an HTTP request to an upstream service and writes
 // the response back to the client. It handles timeouts and upstream errors
 // according to the shared error-handling rules.
-func proxyRequest(w http.ResponseWriter, method, url string, timeout time.Duration, errorLabel string) {
-	client := &http.Client{Timeout: timeout}
 
-	req, err := http.NewRequest(method, url, nil)
+func otlpHTTPHostPort(raw string) string {
+	u := strings.TrimSpace(raw)
+	u = strings.TrimPrefix(u, "https://")
+	u = strings.TrimPrefix(u, "http://")
+	if i := strings.Index(u, "/"); i >= 0 {
+		u = u[:i]
+	}
+	return strings.TrimSuffix(u, "/")
+}
+
+func annotateHTTPSpan(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rec := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		if span := oteltrace.SpanFromContext(r.Context()); span.IsRecording() {
+			span.SetAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.route", r.URL.Path),
+				attribute.String("http.target", r.URL.Path),
+				attribute.Int("http.status_code", rec.statusCode),
+			)
+		}
+	})
+}
+
+func spanNameFromRequest(_ string, r *http.Request) string {
+	return r.Method + " " + r.URL.Path
+}
+
+func initTracer() func() {
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		return func() {}
+	}
+	ctx := context.Background()
+	opts := []otlptracehttp.Option{
+		otlptracehttp.WithInsecure(),
+		otlptracehttp.WithEndpoint(otlpHTTPHostPort(endpoint)),
+	}
+	exp, err := otlptracehttp.New(ctx, opts...)
+	if err != nil {
+		log.Printf("otel exporter init failed: %v", err)
+		return func() {}
+	}
+	name := os.Getenv("OTEL_SERVICE_NAME")
+	if name == "" {
+		name = "frontend"
+	}
+	res := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceName(name),
+	)
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(res),
+	)
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+	var mp *sdkmetric.MeterProvider
+	mexp, merr := otlpmetrichttp.New(ctx,
+		otlpmetrichttp.WithInsecure(),
+		otlpmetrichttp.WithEndpoint(otlpHTTPHostPort(endpoint)),
+	)
+	if merr != nil {
+		log.Printf("otel metric exporter init failed: %v", merr)
+	} else {
+		mp = sdkmetric.NewMeterProvider(
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(mexp)),
+			sdkmetric.WithResource(res),
+		)
+		otel.SetMeterProvider(mp)
+	}
+	return func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = tp.Shutdown(shutdownCtx)
+		if mp != nil {
+			_ = mp.Shutdown(shutdownCtx)
+		}
+	}
+}
+
+func proxyRequest(w http.ResponseWriter, r *http.Request, method, url string, timeout time.Duration, errorLabel string) {
+	client := &http.Client{Timeout: timeout, Transport: otelhttp.NewTransport(http.DefaultTransport)}
+
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		log.Printf("%s error building request: %v", errorLabel, err)
 		writeErrorJSON(w, http.StatusBadGateway, errorLabel+" unavailable")
@@ -185,7 +285,7 @@ func checkoutHandler(w http.ResponseWriter, r *http.Request) {
 		userID = "user-1"
 	}
 	url := fmt.Sprintf("%s/checkout?user_id=%s", apiGatewayURL, userID)
-	proxyRequest(w, http.MethodPost, url, 12*time.Second, "Frontend")
+	proxyRequest(w, r, http.MethodPost, url, 12*time.Second, "Frontend")
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +298,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		pageStr = "1"
 	}
 	url := fmt.Sprintf("%s/search?q=%s&page=%s", searchServiceURL, q, pageStr)
-	proxyRequest(w, http.MethodGet, url, 10*time.Second, "Search")
+	proxyRequest(w, r, http.MethodGet, url, 10*time.Second, "Search")
 }
 
 func authLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +311,7 @@ func authLoginHandler(w http.ResponseWriter, r *http.Request) {
 		password = "pass"
 	}
 	url := fmt.Sprintf("%s/auth/login?user_id=%s&password=%s", apiGatewayURL, userID, password)
-	proxyRequest(w, http.MethodPost, url, 10*time.Second, "Auth")
+	proxyRequest(w, r, http.MethodPost, url, 10*time.Second, "Auth")
 }
 
 func ordersHandler(w http.ResponseWriter, r *http.Request) {
@@ -220,7 +320,7 @@ func ordersHandler(w http.ResponseWriter, r *http.Request) {
 		userID = "user-1"
 	}
 	url := fmt.Sprintf("%s/orders?user_id=%s", apiGatewayURL, userID)
-	proxyRequest(w, http.MethodGet, url, 10*time.Second, "Orders")
+	proxyRequest(w, r, http.MethodGet, url, 10*time.Second, "Orders")
 }
 
 func catalogProductHandler(w http.ResponseWriter, r *http.Request) {
@@ -232,7 +332,7 @@ func catalogProductHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := fmt.Sprintf("%s/catalog/product/%s", apiGatewayURL, productID)
-	proxyRequest(w, http.MethodGet, url, 15*time.Second, "Catalog")
+	proxyRequest(w, r, http.MethodGet, url, 15*time.Second, "Catalog")
 }
 
 func cartGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -243,7 +343,7 @@ func cartGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := fmt.Sprintf("%s/cart/%s", apiGatewayURL, userID)
-	proxyRequest(w, http.MethodGet, url, 5*time.Second, "Cart")
+	proxyRequest(w, r, http.MethodGet, url, 5*time.Second, "Cart")
 }
 
 func cartAddHandler(w http.ResponseWriter, r *http.Request) {
@@ -260,7 +360,7 @@ func cartAddHandler(w http.ResponseWriter, r *http.Request) {
 		productID = "prod-1"
 	}
 	url := fmt.Sprintf("%s/cart/%s/add?product_id=%s", apiGatewayURL, userID, productID)
-	proxyRequest(w, http.MethodPost, url, 5*time.Second, "Cart")
+	proxyRequest(w, r, http.MethodPost, url, 5*time.Second, "Cart")
 }
 
 func profileHandler(w http.ResponseWriter, r *http.Request) {
@@ -271,7 +371,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := fmt.Sprintf("%s/profile/%s", profileServiceURL, userID)
-	proxyRequest(w, http.MethodGet, url, 5*time.Second, "Profile")
+	proxyRequest(w, r, http.MethodGet, url, 5*time.Second, "Profile")
 }
 
 func ingestHandler(w http.ResponseWriter, r *http.Request) {
@@ -284,7 +384,7 @@ func ingestHandler(w http.ResponseWriter, r *http.Request) {
 		userID = "user-1"
 	}
 	url := fmt.Sprintf("%s/ingest?event_type=%s&user_id=%s", ingestServiceURL, eventType, userID)
-	proxyRequest(w, http.MethodPost, url, 5*time.Second, "Ingest")
+	proxyRequest(w, r, http.MethodPost, url, 5*time.Second, "Ingest")
 }
 
 func main() {
@@ -313,7 +413,11 @@ func main() {
 	mux.HandleFunc("/ingest", ingestHandler)
 	mux.Handle("/metrics", promhttp.Handler())
 
-	handler := metricsMiddleware(mux)
+	shutdownTracer := initTracer()
+	defer shutdownTracer()
+	handler := otelhttp.NewHandler(metricsMiddleware(mux), "frontend", otelhttp.WithFilter(func(r *http.Request) bool {
+		return r.URL.Path != "/metrics" && r.URL.Path != "/health"
+	}))
 
 	log.Println("frontend listening on :8080")
 	if err := http.ListenAndServe(":8080", handler); err != nil {
