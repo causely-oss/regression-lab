@@ -3353,15 +3353,17 @@ def gen_k8s_app_yaml():
         lines.append("          ports:")
         lines.append(f"            - containerPort: {port}")
 
-        # Resource requests (required for HPA) on scaled services
+        # Resource requests (required for HPA) on scaled services.
+        # cart-service OOMs at 256Mi under load; keep a higher ceiling there.
         if svc_name in SCALED_SERVICES:
+            mem_request, mem_limit = ("256Mi", "512Mi") if svc_name == "cart-service" else ("128Mi", "256Mi")
             lines.append("          resources:")
             lines.append("            requests:")
             lines.append("              cpu: 100m")
-            lines.append("              memory: 128Mi")
+            lines.append(f"              memory: {mem_request}")
             lines.append("            limits:")
             lines.append("              cpu: 500m")
-            lines.append("              memory: 256Mi")
+            lines.append(f"              memory: {mem_limit}")
 
         lines.append("          env:")
         lines.append("            - name: OTEL_EXPORTER_OTLP_ENDPOINT")
