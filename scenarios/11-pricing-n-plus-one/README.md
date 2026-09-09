@@ -1,7 +1,7 @@
 # Scenario 11: pricing-service calls discount-service once per cart item
 
 **Fix type:** application code (Go)
-**Descriptive branch (operator reference only, do not deploy from this):** `scenario-11-pricing-n-plus-one-bug`
+**Descriptive branch (carries this `scenarios/` tooling — check it out to run the scripts below, but never hand this checkout to an agent under test):** `scenario-11-pricing-n-plus-one-bug`
 **Branch to deploy for an agent test:** `feat/per-sku-discount-pricing` (forks from `main`, no `scenarios/` directory or scenario-named history in its tree — see [Blind-test hygiene](../README.md#blind-test-hygiene--every-scenario-has-two-branches))
 **Affected services:** `pricing-service` (port 8097) calling `discount-service` (port 8098)
 
@@ -54,8 +54,16 @@ call pattern is wrong, not the callee.
 
 Operator steps, from this repo checkout (has `scenarios/`, fine for you):
 
+Note: `feat/per-sku-discount-pricing` carries the regression but, by design,
+has no `scenarios/` directory — a plain `git checkout
+feat/per-sku-discount-pricing` would delete `deploy.sh` from your working
+tree along with it. Stay on the descriptive branch for the script, and pull
+in just the neutral branch's `pricing-service` source with a path-scoped
+checkout instead of switching branches wholesale:
+
 ```bash
-git checkout feat/per-sku-discount-pricing
+git checkout scenario-11-pricing-n-plus-one-bug
+git checkout feat/per-sku-discount-pricing -- environment/services/pricing-service
 bash scenarios/11-pricing-n-plus-one/deploy.sh   # builds+pushes pricing-service, rolls it out
 ```
 
@@ -64,9 +72,11 @@ Then hand the agent under test a **separate** clone/worktree of
 [Blind-test hygiene](../README.md#blind-test-hygiene--every-scenario-has-two-branches)).
 It should open its fix PR against `main`.
 
-To verify a fix and reset:
+To verify a fix and reset (the agent's fix branch forks from `main`, so it
+won't have `scenarios/` either — same path-scoped-checkout pattern applies):
 
 ```bash
-git checkout <agent's fix branch or commit>
+git checkout scenario-11-pricing-n-plus-one-bug
+git checkout <agent's fix branch or commit> -- environment/services/pricing-service
 bash scenarios/11-pricing-n-plus-one/deploy.sh
 ```

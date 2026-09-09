@@ -11,8 +11,13 @@
 # `docker images`) and forces imagePullPolicy: Always so every run actually
 # deploys what you just built.
 #
-# Usage:
-#   git checkout scenario-11-pricing-n-plus-one-bug   # or your fix branch
+# Usage: this branch carries the scenarios/ tooling but not necessarily the
+# source you want built (the neutral bug/fix branches fork from main and
+# don't have scenarios/ at all). Overlay the source you want with a
+# path-scoped checkout instead of switching branches wholesale — see
+# "Deploy / verify" in README.md for the full pattern:
+#   git checkout scenario-11-pricing-n-plus-one-bug
+#   git checkout <bug-or-fix-branch> -- environment/services/pricing-service
 #   bash scenarios/11-pricing-n-plus-one/deploy.sh
 
 set -euo pipefail
