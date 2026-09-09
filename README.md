@@ -543,6 +543,23 @@ bash inject/restore_deep_chain_latency.sh     # restore
 
 ---
 
+## Regression Scenarios (code/config fix required)
+
+The scenarios above are runtime toggles — the fix is a curl call to a
+restore script, not a diff. `scenarios/` holds a separate set of scenarios
+where the regression is a real commit to application code or a Kubernetes
+manifest (as if a bad PR had merged), and the fix has to be an actual PR, not
+a flag flip. See [`scenarios/README.md`](scenarios/README.md) for the full
+model; scenarios currently defined:
+
+| # | Slug | Fix type | Service |
+|---|------|----------|---------|
+| 9 | [billing-missing-timeout](scenarios/09-billing-missing-timeout/README.md) | App code | `billing-service` |
+| 10 | [recommendation-oom](scenarios/10-recommendation-oom/README.md) | K8s config | `recommendation-service` |
+| 11 | [pricing-n-plus-one](scenarios/11-pricing-n-plus-one/README.md) | App code | `pricing-service` |
+
+---
+
 ## Teardown
 
 ```bash
