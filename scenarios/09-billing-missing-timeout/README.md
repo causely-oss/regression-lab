@@ -1,7 +1,7 @@
 # Scenario 9: billing-service loses its downstream request timeout
 
 **Fix type:** application code (Go)
-**Descriptive branch (operator reference only, do not deploy from this):** `scenario-09-billing-timeout-bug`
+**Descriptive branch (carries this `scenarios/` tooling — check it out to run the scripts below, but never hand this checkout to an agent under test):** `scenario-09-billing-timeout-bug`
 **Branch to deploy for an agent test:** `chore/billing-http-client-pooling` (forks from `main`, no `scenarios/` directory or scenario-named history in its tree — see [Blind-test hygiene](../README.md#blind-test-hygiene--every-scenario-has-two-branches))
 **Affected service:** `billing-service` (port 8091)
 
@@ -76,10 +76,19 @@ trigger, not the root cause.
 
 ## Deploy / verify
 
-Operator steps, from this repo checkout (has `scenarios/`, fine for you):
+Operator steps, from this repo checkout (has `scenarios/`, fine for you).
+
+Note: `chore/billing-http-client-pooling` carries the regression but, by
+design, has no `scenarios/` directory — so a plain `git checkout
+chore/billing-http-client-pooling` would delete `deploy.sh`/`trigger.sh` from
+your working tree along with it. Stay on the descriptive branch for the
+scripts, and pull in just the neutral branch's `billing-service` source (the
+one that actually matters for what gets built) with a path-scoped checkout
+instead of switching branches wholesale:
 
 ```bash
-git checkout chore/billing-http-client-pooling
+git checkout scenario-09-billing-timeout-bug
+git checkout chore/billing-http-client-pooling -- environment/services/billing-service
 bash scenarios/09-billing-missing-timeout/deploy.sh   # builds+pushes billing-service, rolls it out
 bash scenarios/09-billing-missing-timeout/trigger.sh
 ```
@@ -89,10 +98,12 @@ Then hand the agent under test a **separate** clone/worktree of
 [Blind-test hygiene](../README.md#blind-test-hygiene--every-scenario-has-two-branches)).
 It should open its fix PR against `main`.
 
-To verify a fix and reset:
+To verify a fix and reset (the agent's fix branch forks from `main`, so it
+won't have `scenarios/` either — same path-scoped-checkout pattern applies):
 
 ```bash
-git checkout <agent's fix branch or commit>
+git checkout scenario-09-billing-timeout-bug
+git checkout <agent's fix branch or commit> -- environment/services/billing-service
 bash scenarios/09-billing-missing-timeout/deploy.sh
 bash scenarios/09-billing-missing-timeout/restore.sh
 ```
