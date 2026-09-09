@@ -464,7 +464,7 @@ metadata:
   labels:
     service: cart-service
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: cart-service
@@ -486,11 +486,11 @@ spec:
         - containerPort: 8101
         resources:
           requests:
-            cpu: 100m
-            memory: 256Mi
+            cpu: 250m
+            memory: 1Gi
           limits:
-            cpu: 500m
-            memory: 512Mi
+            cpu: 1000m
+            memory: 2Gi
         env:
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: http://otel-collector:4318
@@ -783,7 +783,7 @@ metadata:
   labels:
     service: discount-service
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: discount-service
@@ -819,6 +819,13 @@ spec:
           value: http://loyalty-service:8104
         - name: CACHE_SERVICE_URL
           value: http://cache-service:8109
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         readinessProbe:
           httpGet:
             path: /health
