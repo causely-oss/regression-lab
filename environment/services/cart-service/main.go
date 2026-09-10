@@ -174,10 +174,14 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func applyFaultInjection(w http.ResponseWriter) bool {
+func applyFaultInjection(ctx context.Context, w http.ResponseWriter) bool {
 	latMs, errRate := faultCfg.get()
 	if latMs > 0 {
-		time.Sleep(time.Duration(latMs) * time.Millisecond)
+		select {
+		case <-time.After(time.Duration(latMs) * time.Millisecond):
+		case <-ctx.Done():
+			return true
+		}
 	}
 	if errRate > 0 && rand.Float64() < errRate {
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
@@ -346,7 +350,7 @@ func fireAndForget(name, url string) {
 }
 
 func getCartHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	// Extract user_id from /cart/{user_id} (but not /cart/{user_id}/add)
 	path := strings.TrimPrefix(r.URL.Path, "/cart/")
 	parts := strings.SplitN(path, "/", 2)
@@ -366,7 +370,7 @@ func getCartHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addToCartHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	// /cart/{user_id}/add
 	path := strings.TrimPrefix(r.URL.Path, "/cart/")
 	parts := strings.SplitN(path, "/", 2)
