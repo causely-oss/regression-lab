@@ -173,10 +173,14 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func applyFaultInjection(w http.ResponseWriter) bool {
+func applyFaultInjection(ctx context.Context, w http.ResponseWriter) bool {
 	latMs, errRate := faultCfg.get()
 	if latMs > 0 {
-		time.Sleep(time.Duration(latMs) * time.Millisecond)
+		select {
+		case <-time.After(time.Duration(latMs) * time.Millisecond):
+		case <-ctx.Done():
+			return true
+		}
 	}
 	if errRate > 0 && rand.Float64() < errRate {
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
@@ -321,7 +325,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func checkHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	items := r.URL.Query().Get("items")
 	if items == "" { items = "item-1" }
 	warehouseOps.WithLabelValues("check").Inc()
@@ -332,7 +336,7 @@ func checkHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func dispatchHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	orderID := r.URL.Query().Get("order_id")
 	if orderID == "" { orderID = "unknown" }
 	warehouseOps.WithLabelValues("dispatch").Inc()
