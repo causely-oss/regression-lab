@@ -166,10 +166,14 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func applyFaultInjection(w http.ResponseWriter) bool {
+func applyFaultInjection(ctx context.Context, w http.ResponseWriter) bool {
 	latMs, errRate := faultCfg.get()
 	if latMs > 0 {
-		time.Sleep(time.Duration(latMs) * time.Millisecond)
+		select {
+		case <-time.After(time.Duration(latMs) * time.Millisecond):
+		case <-ctx.Done():
+			return true
+		}
 	}
 	if errRate > 0 && rand.Float64() < errRate {
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "injected fault"})
@@ -318,7 +322,7 @@ var userServiceURL string
 var mediaServiceURL string
 
 func getReviewsHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	productID := strings.TrimPrefix(r.URL.Path, "/reviews/")
 	numReviews := rand.Intn(5) + 3
 	reviews := make([]map[string]interface{}, numReviews)

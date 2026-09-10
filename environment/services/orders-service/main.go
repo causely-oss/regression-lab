@@ -175,10 +175,14 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func applyFaultInjection(w http.ResponseWriter) bool {
+func applyFaultInjection(ctx context.Context, w http.ResponseWriter) bool {
 	latMs, errRate := faultCfg.get()
 	if latMs > 0 {
-		time.Sleep(time.Duration(latMs) * time.Millisecond)
+		select {
+		case <-time.After(time.Duration(latMs) * time.Millisecond):
+		case <-ctx.Done():
+			return true
+		}
 	}
 	if errRate > 0 && rand.Float64() < errRate {
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "injected fault"})
@@ -327,7 +331,7 @@ var notificationServiceURL string
 var shippingServiceURL string
 
 func getOrderHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	orderID := strings.TrimPrefix(r.URL.Path, "/orders/")
 	if orderID == "" || orderID == r.URL.Path {
 		http.Error(w, "order_id required", http.StatusBadRequest)
@@ -358,7 +362,7 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func listOrdersHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
 		userID = "user-1"
