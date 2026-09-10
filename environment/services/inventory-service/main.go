@@ -192,10 +192,14 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func applyFaultInjection(w http.ResponseWriter) bool {
+func applyFaultInjection(ctx context.Context, w http.ResponseWriter) bool {
 	latMs, errRate := faultCfg.get()
 	if latMs > 0 {
-		time.Sleep(time.Duration(latMs) * time.Millisecond)
+		select {
+		case <-time.After(time.Duration(latMs) * time.Millisecond):
+		case <-ctx.Done():
+			return true
+		}
 	}
 	if errRate > 0 && rand.Float64() < errRate {
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
@@ -366,7 +370,7 @@ var notificationServiceURL string
 var ctx = context.Background()
 
 func reserveHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	orderID := r.URL.Query().Get("order_id")
 	items := r.URL.Query().Get("items")
 	if items == "" { items = "item-1" }
@@ -390,7 +394,7 @@ func reserveHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func inventoryStatusHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	orderID := r.URL.Query().Get("order_id")
 	if orderID == "" { orderID = "unknown" }
 	if redisClient != nil {
