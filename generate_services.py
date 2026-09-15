@@ -355,10 +355,14 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 \t}
 }
 
-func applyFaultInjection(w http.ResponseWriter) bool {
+func applyFaultInjection(ctx context.Context, w http.ResponseWriter) bool {
 \tlatMs, errRate := faultCfg.get()
 \tif latMs > 0 {
-\t\ttime.Sleep(time.Duration(latMs) * time.Millisecond)
+\t\tselect {
+\t\tcase <-time.After(time.Duration(latMs) * time.Millisecond):
+\t\tcase <-ctx.Done():
+\t\t\treturn true
+\t\t}
 \t}
 \tif errRate > 0 && rand.Float64() < errRate {
 \t\tjsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
@@ -435,10 +439,14 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 \t}
 }
 
-func applyFaultInjection(w http.ResponseWriter) bool {
+func applyFaultInjection(ctx context.Context, w http.ResponseWriter) bool {
 \tlatMs, errRate := faultCfg.get()
 \tif latMs > 0 {
-\t\ttime.Sleep(time.Duration(latMs) * time.Millisecond)
+\t\tselect {
+\t\tcase <-time.After(time.Duration(latMs) * time.Millisecond):
+\t\tcase <-ctx.Done():
+\t\t\treturn true
+\t\t}
 \t}
 \tif errRate > 0 && rand.Float64() < errRate {
 \t\tjsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
@@ -610,7 +618,7 @@ var sessionServiceURL string
 var userServiceURL string
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" {
 \t\tuserID = "user-1"
@@ -639,7 +647,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func validateHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \ttoken := r.URL.Query().Get("token")
 \tif token == "" {
 \t\ttoken = "tok-123"
@@ -698,7 +706,7 @@ var notificationServiceURL string
 var shippingServiceURL string
 
 func getOrderHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \torderID := strings.TrimPrefix(r.URL.Path, "/orders/")
 \tif orderID == "" || orderID == r.URL.Path {
 \t\thttp.Error(w, "order_id required", http.StatusBadRequest)
@@ -729,7 +737,7 @@ func getOrderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func listOrdersHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" {
 \t\tuserID = "user-1"
@@ -817,7 +825,7 @@ var notificationServiceURL string
 var ctx = context.Background()
 
 func reserveHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \torderID := r.URL.Query().Get("order_id")
 \titems := r.URL.Query().Get("items")
 \tif items == "" { items = "item-1" }
@@ -841,7 +849,7 @@ func reserveHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func inventoryStatusHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \torderID := r.URL.Query().Get("order_id")
 \tif orderID == "" { orderID = "unknown" }
 \tif redisClient != nil {
@@ -928,7 +936,7 @@ var analyticsServiceURL string
     code += go_kafka_consumer_func(KAFKA_TOPIC_SHIPPING_EVENTS, "shipping-service-group", consumer_body)
     code += '''
 func getShippingHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \torderID := strings.TrimPrefix(r.URL.Path, "/shipping/")
 \tjsonResponse(w, http.StatusOK, map[string]interface{}{
 \t\t"order_id": orderID, "status": "in_transit", "eta": "2d",
@@ -936,7 +944,7 @@ func getShippingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func shippingStatusHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \torderID := r.URL.Query().Get("order_id")
 \tif orderID == "" { orderID = "unknown" }
 \tshipments.WithLabelValues("status_check").Inc()
@@ -1007,7 +1015,7 @@ var cacheServiceURL string
 var analyticsServiceURL string
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tq := r.URL.Query().Get("q")
 \tif q == "" { q = "product" }
 \tpage := r.URL.Query().Get("page")
@@ -1084,7 +1092,7 @@ var recommendationServiceURL string
 var ctx = context.Background()
 
 func rankHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tq := r.URL.Query().Get("q")
 \tif q == "" { q = "product" }
 \tpage := r.URL.Query().Get("page")
@@ -1161,7 +1169,7 @@ var loyaltyServiceURL string
 var cacheServiceURL string
 
 func getProfileHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := strings.TrimPrefix(r.URL.Path, "/profile/")
 \tif userID == "" || userID == "preferences" {
 \t\tpreferencesHandler(w, r)
@@ -1191,7 +1199,7 @@ func getProfileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func preferencesHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \tjsonResponse(w, http.StatusOK, map[string]interface{}{
@@ -1258,7 +1266,7 @@ var fraudDetectionURL string
 var notificationServiceURL string
 
 func chargeHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tcheckoutID := r.URL.Query().Get("checkout_id")
 \tamountStr := r.URL.Query().Get("amount")
 \tuserID := r.URL.Query().Get("user_id")
@@ -1349,7 +1357,7 @@ var externalPaymentURL string
 var notificationServiceURL string
 
 func payHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tinvoiceID := r.URL.Query().Get("invoice_id")
 \tamount := r.URL.Query().Get("amount")
 \tresult, err := httpPost(externalPaymentURL + "/external/charge?invoice_id=" + url.QueryEscape(invoiceID) + "&amount=" + amount)
@@ -1421,7 +1429,7 @@ func produceSynthetic() {
 }
 
 func ingestHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \teventType := r.URL.Query().Get("event_type")
 \tif eventType == "" { eventType = "click" }
 \tuserID := r.URL.Query().Get("user_id")
@@ -1485,7 +1493,7 @@ func init() {
     code += go_kafka_consumer_func(KAFKA_TOPIC_INGEST_DATA, "processing-service-group", consumer_body)
     code += '''
 func statsHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tjsonResponse(w, http.StatusOK, map[string]interface{}{
 \t\t"status": "running", "pipeline": "ingest-data -> recommendations",
 \t})
@@ -1551,7 +1559,7 @@ var ctx = context.Background()
     code += go_kafka_consumer_func(KAFKA_TOPIC_RECOMMENDATIONS, "recommendation-service-group", consumer_body)
     code += '''
 func getRecommendationsHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := strings.TrimPrefix(r.URL.Path, "/recommendations/")
 \tif userID == "" { userID = "user-1" }
 \t// Check Redis cache
@@ -1642,7 +1650,7 @@ var warehouseServiceURL string
 var emailServiceURL string
 
 func deliverHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \tdType := r.URL.Query().Get("type")
@@ -1703,7 +1711,7 @@ var cacheServiceURL string
 var ctx = context.Background()
 
 func calculateHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \titems := r.URL.Query().Get("items")
 \tif items == "" { items = "item-1,item-2" }
 \tuserID := r.URL.Query().Get("user_id")
@@ -1777,7 +1785,7 @@ var loyaltyServiceURL string
 var cacheServiceURL string
 
 func applyDiscountHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \tamount := 100.0
@@ -1850,7 +1858,7 @@ func initUsers() {
 }
 
 func getUserHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := strings.TrimPrefix(r.URL.Path, "/users/")
 \tvar resp map[string]interface{}
 \tif user, ok := users[userID]; ok {
@@ -1871,7 +1879,7 @@ func getUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func listUsersHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tpage := 1
 \tlimit := 10
 \tfmt.Sscanf(r.URL.Query().Get("page"), "%d", &page)
@@ -1953,7 +1961,7 @@ var emailServiceURL string
     code += go_kafka_consumer_func(KAFKA_TOPIC_NOTIFICATIONS, "notification-service-group", consumer_body)
     code += '''
 func notifyHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \tmessage := r.URL.Query().Get("message")
@@ -2000,7 +2008,7 @@ var sessionServiceURL string
 var ctx = context.Background()
 
 func getCartHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \t// Extract user_id from /cart/{user_id} (but not /cart/{user_id}/add)
 \tpath := strings.TrimPrefix(r.URL.Path, "/cart/")
 \tparts := strings.SplitN(path, "/", 2)
@@ -2020,7 +2028,7 @@ func getCartHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addToCartHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \t// /cart/{user_id}/add
 \tpath := strings.TrimPrefix(r.URL.Path, "/cart/")
 \tparts := strings.SplitN(path, "/", 2)
@@ -2139,7 +2147,7 @@ func initProducts() {
 }
 
 func listProductsHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tpage := 1
 \tlimit := 10
 \tfmt.Sscanf(r.URL.Query().Get("page"), "%d", &page)
@@ -2169,7 +2177,7 @@ func listProductsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getProductHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tproductID := strings.TrimPrefix(r.URL.Path, "/catalog/product/")
 \tvar found *Product
 \tfor i := range products {
@@ -2258,7 +2266,7 @@ var userServiceURL string
 var mediaServiceURL string
 
 func getReviewsHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tproductID := strings.TrimPrefix(r.URL.Path, "/reviews/")
 \tnumReviews := rand.Intn(5) + 3
 \treviews := make([]map[string]interface{}, numReviews)
@@ -2340,7 +2348,7 @@ var cacheServiceURL string
 var ctx = context.Background()
 
 func getTierHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \tif redisClient != nil {
@@ -2376,7 +2384,7 @@ func getTierHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getPointsHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \tjsonResponse(w, http.StatusOK, map[string]interface{}{
@@ -2442,7 +2450,7 @@ var (
     code += go_kafka_consumer_func(KAFKA_TOPIC_AUDIT_EVENTS, "audit-service-group", consumer_body)
     code += '''
 func recentHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tlimit := 50
 \tfmt.Sscanf(r.URL.Query().Get("limit"), "%d", &limit)
 \tauditMutex.Lock()
@@ -2484,7 +2492,7 @@ def gen_session_service():
 var ctx = context.Background()
 
 func createSessionHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \tsessionID := fmt.Sprintf("sess-%d", time.Now().UnixNano())
@@ -2498,7 +2506,7 @@ func createSessionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func validateSessionHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \ttoken := r.URL.Query().Get("token")
 \tif redisClient != nil && token != "" {
 \t\tval, err := redisClient.Get(ctx, "session:"+token).Result()
@@ -2568,7 +2576,7 @@ var cacheServiceURL string
     code += go_kafka_consumer_func(KAFKA_TOPIC_ANALYTICS_EVENTS, "analytics-service-group", consumer_body)
     code += '''
 func signalsHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \treportData, _ := httpGet(reportingServiceURL + "/reports/summary")
@@ -2590,7 +2598,7 @@ func signalsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \teventMutex.Lock()
 \tcounts := make(map[string]int)
 \tfor k, v := range eventCounts { counts[k] = v }
@@ -2640,7 +2648,7 @@ func init() {
     code += go_health_and_metrics("email-service")
     code += '''
 func sendEmailHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tto := r.URL.Query().Get("to")
 \tif to == "" { to = "user@example.com" }
 \tsubject := r.URL.Query().Get("subject")
@@ -2692,7 +2700,7 @@ func init() {
 var ctx = context.Background()
 
 func cacheGetHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tkey := r.URL.Query().Get("key")
 \tif redisClient != nil {
 \t\tval, err := redisClient.Get(ctx, "cache:"+key).Result()
@@ -2709,7 +2717,7 @@ func cacheGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func cacheSetHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tkey := r.URL.Query().Get("key")
 \tvalue := r.URL.Query().Get("value")
 \tif value == "" { value = "{}" }
@@ -2757,7 +2765,7 @@ def gen_reporting_service():
 var cacheServiceURL string
 
 func summaryHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \t// Simulate report generation with slight delay
 \ttime.Sleep(time.Duration(2+rand.Intn(8)) * time.Millisecond)
 \tresult := map[string]interface{}{
@@ -2777,7 +2785,7 @@ func summaryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func detailedHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tperiod := r.URL.Query().Get("period")
 \tif period == "" { period = "daily" }
 \tjsonResponse(w, http.StatusOK, map[string]interface{}{
@@ -2828,7 +2836,7 @@ var ctx = context.Background()
 var analyticsServiceURL string
 
 func fraudCheckHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \tamount := 100.0
@@ -2891,7 +2899,7 @@ def gen_tax_service():
     code += go_health_and_metrics("tax-service")
     code += '''
 func calculateTaxHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tamount := 100.0
 \tfmt.Sscanf(r.URL.Query().Get("amount"), "%f", &amount)
 \tregion := r.URL.Query().Get("region")
@@ -2942,7 +2950,7 @@ func init() {
     code += go_health_and_metrics("warehouse-service")
     code += '''
 func checkHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \titems := r.URL.Query().Get("items")
 \tif items == "" { items = "item-1" }
 \twarehouseOps.WithLabelValues("check").Inc()
@@ -2953,7 +2961,7 @@ func checkHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func dispatchHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \torderID := r.URL.Query().Get("order_id")
 \tif orderID == "" { orderID = "unknown" }
 \twarehouseOps.WithLabelValues("dispatch").Inc()
@@ -2998,7 +3006,7 @@ def gen_media_service():
 var cacheServiceURL string
 
 func productMediaHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tproductID := strings.TrimPrefix(r.URL.Path, "/media/product/")
 \tnumImages := rand.Intn(3) + 2
 \timages := make([]string, numImages)
@@ -3018,7 +3026,7 @@ func productMediaHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func avatarHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tuserID := r.URL.Query().Get("user_id")
 \tif userID == "" { userID = "user-1" }
 \tjsonResponse(w, http.StatusOK, map[string]interface{}{
@@ -3076,7 +3084,7 @@ func init() {
     code += go_health_and_metrics("external-payment-api")
     code += '''
 func chargeHandler(w http.ResponseWriter, r *http.Request) {
-\tif applyFaultInjection(w) { return }
+\tif applyFaultInjection(r.Context(), w) { return }
 \tinvoiceID := r.URL.Query().Get("invoice_id")
 \tamount := 100.0
 \tfmt.Sscanf(r.URL.Query().Get("amount"), "%f", &amount)

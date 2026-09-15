@@ -174,10 +174,14 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func applyFaultInjection(w http.ResponseWriter) bool {
+func applyFaultInjection(ctx context.Context, w http.ResponseWriter) bool {
 	latMs, errRate := faultCfg.get()
 	if latMs > 0 {
-		time.Sleep(time.Duration(latMs) * time.Millisecond)
+		select {
+		case <-time.After(time.Duration(latMs) * time.Millisecond):
+		case <-ctx.Done():
+			return true
+		}
 	}
 	if errRate > 0 && rand.Float64() < errRate {
 		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
@@ -329,7 +333,7 @@ func consumeKafka(brokers, topic, groupID string) {
 }
 
 func getShippingHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	orderID := strings.TrimPrefix(r.URL.Path, "/shipping/")
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"order_id": orderID, "status": "in_transit", "eta": "2d",
@@ -337,7 +341,7 @@ func getShippingHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func shippingStatusHandler(w http.ResponseWriter, r *http.Request) {
-	if applyFaultInjection(w) { return }
+	if applyFaultInjection(r.Context(), w) { return }
 	orderID := r.URL.Query().Get("order_id")
 	if orderID == "" { orderID = "unknown" }
 	shipments.WithLabelValues("status_check").Inc()
