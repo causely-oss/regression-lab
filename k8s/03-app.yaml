@@ -483,6 +483,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8101"
+        team.causely.io/owner: "checkout-platform"
     spec:
       containers:
       - name: cart-service
@@ -2566,7 +2567,7 @@ spec:
         resources:
           requests:
             cpu: 100m
-            memory: 128Mi
+            memory: 96Mi
           limits:
             cpu: 500m
             memory: 256Mi
