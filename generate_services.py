@@ -349,7 +349,6 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 \t\t\tif f, err := strconv.ParseFloat(v, 64); err == nil { errPtr = &f }
 \t\t}
 \t\tlatMs, errRate := faultCfg.set(latPtr, errPtr)
-\t\tlog.Printf("WARN: Injection config updated: latency_ms=%d error_rate=%.4f", latMs, errRate)
 \t\tjsonResponse(w, http.StatusOK, map[string]interface{}{"latency_ms": latMs, "error_rate": errRate})
 \tdefault:
 \t\tjsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
@@ -362,7 +361,7 @@ func applyFaultInjection(w http.ResponseWriter) bool {
 \t\ttime.Sleep(time.Duration(latMs) * time.Millisecond)
 \t}
 \tif errRate > 0 && rand.Float64() < errRate {
-\t\tjsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "injected fault"})
+\t\tjsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 \t\treturn true
 \t}
 \treturn false
@@ -427,7 +426,6 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 \t\t\t}
 \t\t}
 \t\tlatMs, errRate := faultCfg.set(latPtr, errPtr)
-\t\tlog.Printf("WARN: Injection config updated: latency_ms=%d error_rate=%.4f", latMs, errRate)
 \t\tjsonResponse(w, http.StatusOK, map[string]interface{}{
 \t\t\t"latency_ms": latMs, "error_rate": errRate,
 \t\t\t"pause_consumer": atomic.LoadInt32(&consumerPaused) != 0,
@@ -443,7 +441,7 @@ func applyFaultInjection(w http.ResponseWriter) bool {
 \t\ttime.Sleep(time.Duration(latMs) * time.Millisecond)
 \t}
 \tif errRate > 0 && rand.Float64() < errRate {
-\t\tjsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "injected fault"})
+\t\tjsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 \t\treturn true
 \t}
 \treturn false
