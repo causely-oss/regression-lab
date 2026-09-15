@@ -4,6 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"log"
 	"math/rand"
 	"net/http"
@@ -13,20 +27,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
-	oteltrace "go.opentelemetry.io/otel/trace"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/redis/go-redis/v9"
 )
 
 const serviceName = "cart-service"
@@ -119,7 +119,6 @@ func httpPost(ctx context.Context, url string) (map[string]interface{}, error) {
 	return result, nil
 }
 
-
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -146,10 +145,21 @@ func (c *injectionConfig) set(latMs *int, errRate *float64) (int, float64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if latMs != nil {
-		v := *latMs; if v < 0 { v = 0 }; c.LatencyMs = v
+		v := *latMs
+		if v < 0 {
+			v = 0
+		}
+		c.LatencyMs = v
 	}
 	if errRate != nil {
-		v := *errRate; if v < 0 { v = 0 }; if v > 1 { v = 1 }; c.ErrorRate = v
+		v := *errRate
+		if v < 0 {
+			v = 0
+		}
+		if v > 1 {
+			v = 1
+		}
+		c.ErrorRate = v
 	}
 	return c.LatencyMs, c.ErrorRate
 }
@@ -162,10 +172,14 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 		var latPtr *int
 		var errPtr *float64
 		if v := r.URL.Query().Get("latency_ms"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil { latPtr = &n }
+			if n, err := strconv.Atoi(v); err == nil {
+				latPtr = &n
+			}
 		}
 		if v := r.URL.Query().Get("error_rate"); v != "" {
-			if f, err := strconv.ParseFloat(v, 64); err == nil { errPtr = &f }
+			if f, err := strconv.ParseFloat(v, 64); err == nil {
+				errPtr = &f
+			}
 		}
 		latMs, errRate := faultCfg.set(latPtr, errPtr)
 		log.Printf("WARN: Injection config updated: latency_ms=%d error_rate=%.4f", latMs, errRate)
@@ -209,12 +223,10 @@ func initRedis(redisURL string) {
 	log.Printf("Redis client configured for %s db=%d", addr, db)
 }
 
-
 var otelHTTPClient = &http.Client{
 	Timeout:   5 * time.Second,
 	Transport: otelhttp.NewTransport(http.DefaultTransport),
 }
-
 
 func otlpHTTPHostPort(raw string) string {
 	u := strings.TrimSpace(raw)
@@ -373,10 +385,14 @@ func addToCartHandler(w http.ResponseWriter, r *http.Request) {
 	parts := strings.SplitN(path, "/", 2)
 	userID := parts[0]
 	productID := r.URL.Query().Get("product_id")
-	if productID == "" { productID = "prod-1" }
+	if productID == "" {
+		productID = "prod-1"
+	}
 	// Validate product
-	product, _ := httpGet(r.Context(), catalogServiceURL + "/catalog/product/" + url.QueryEscape(productID))
-	if product == nil { product = map[string]interface{}{"id": productID, "price": 29.99} }
+	product, _ := httpGet(r.Context(), catalogServiceURL+"/catalog/product/"+url.QueryEscape(productID))
+	if product == nil {
+		product = map[string]interface{}{"id": productID, "price": 29.99}
+	}
 	cart := map[string]interface{}{"user_id": userID, "items": []interface{}{}, "total": 0.0}
 	if redisClient != nil {
 		val, err := redisClient.Get(ctx, "cart:"+userID).Result()
@@ -385,12 +401,32 @@ func addToCartHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	items, _ := cart["items"].([]interface{})
-	items = append(items, product)
+	merged := false
+	for _, item := range items {
+		if m, ok := item.(map[string]interface{}); ok {
+			if id, ok := m["id"].(string); ok && id == productID {
+				qty, _ := m["quantity"].(float64)
+				m["quantity"] = qty + 1
+				merged = true
+				break
+			}
+		}
+	}
+	if !merged {
+		product["id"] = productID
+		product["quantity"] = 1.0
+		items = append(items, product)
+	}
 	cart["items"] = items
 	total := 0.0
 	for _, item := range items {
 		if m, ok := item.(map[string]interface{}); ok {
-			if p, ok := m["price"].(float64); ok { total += p }
+			price, _ := m["price"].(float64)
+			qty, _ := m["quantity"].(float64)
+			if qty == 0 {
+				qty = 1
+			}
+			total += price * qty
 		}
 	}
 	cart["total"] = total
