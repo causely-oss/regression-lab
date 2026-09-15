@@ -356,8 +356,8 @@ func checkoutHandler(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(time.Duration(latMs) * time.Millisecond)
 	}
 	if errRate > 0 && rng.Float64() < errRate {
-		checkoutOutcomes.WithLabelValues("injected_error").Inc()
-		log.Printf("ERROR: INJECTED ERROR in checkout for checkout_id=%s", checkoutID)
+		checkoutOutcomes.WithLabelValues("error").Inc()
+		log.Printf("ERROR: checkout failed for checkout_id=%s", checkoutID)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Internal server error"})
 		return
 	}
@@ -585,7 +585,6 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		latMs, errRate := inject.set(latPtr, errPtr)
-		log.Printf("WARN: Injection config updated: latency_ms=%d error_rate=%.4f", latMs, errRate)
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"latency_ms": latMs,
 			"error_rate": errRate,
