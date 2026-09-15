@@ -2049,10 +2049,10 @@ spec:
         resources:
           requests:
             cpu: 100m
-            memory: 12Mi
+            memory: 8Mi
           limits:
             cpu: 500m
-            memory: 14Mi
+            memory: 10Mi
         env:
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: http://otel-collector:4318
