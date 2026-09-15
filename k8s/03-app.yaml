@@ -805,7 +805,7 @@ spec:
     spec:
       containers:
       - name: discount-service
-        image: docker.io/causely-oss/discount-service:v2
+        image: docker.io/causely-oss/discount-service:v3
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8098
