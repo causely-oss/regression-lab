@@ -341,7 +341,7 @@ spec:
         - until nc -z kafka 9092; do echo "waiting for kafka..."; sleep 2; done
       containers:
       - name: billing-service
-        image: docker.io/causely-oss/billing-service:v3
+        image: docker.io/causely-oss/billing-service:v4
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8091
@@ -1596,7 +1596,7 @@ spec:
     spec:
       containers:
       - name: payment-adapter
-        image: docker.io/causely-oss/payment-adapter:v3
+        image: docker.io/causely-oss/payment-adapter:v4
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8092
