@@ -286,6 +286,8 @@ func applyDiscountHandler(w http.ResponseWriter, r *http.Request) {
 	if userID == "" { userID = "user-1" }
 	amount := 100.0
 	fmt.Sscanf(r.URL.Query().Get("amount"), "%f", &amount)
+	// Evaluate applicable promotion rules against the current ruleset
+	time.Sleep(time.Duration(30+rand.Intn(21)) * time.Millisecond)
 	// Check loyalty tier
 	tier := "bronze"
 	loyaltyData, err := httpGet(r.Context(), loyaltyServiceURL + "/loyalty/tier?user_id=" + userID)
