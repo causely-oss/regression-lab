@@ -165,7 +165,6 @@ func adminConfigHandler(w http.ResponseWriter, r *http.Request) {
 			if f, err := strconv.ParseFloat(v, 64); err == nil { errPtr = &f }
 		}
 		latMs, errRate := faultCfg.set(latPtr, errPtr)
-		log.Printf("WARN: Injection config updated: latency_ms=%d error_rate=%.4f", latMs, errRate)
 		jsonResponse(w, http.StatusOK, map[string]interface{}{"latency_ms": latMs, "error_rate": errRate})
 	default:
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
@@ -178,7 +177,7 @@ func applyFaultInjection(w http.ResponseWriter) bool {
 		time.Sleep(time.Duration(latMs) * time.Millisecond)
 	}
 	if errRate > 0 && rand.Float64() < errRate {
-		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "injected fault"})
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 		return true
 	}
 	return false
