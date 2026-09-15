@@ -486,7 +486,7 @@ spec:
     spec:
       containers:
       - name: cart-service
-        image: docker.io/causely-oss/cart-service:v3
+        image: docker.io/causely-oss/cart-service:v5
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8101
