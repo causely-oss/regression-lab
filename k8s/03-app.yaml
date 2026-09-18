@@ -1596,7 +1596,7 @@ spec:
     spec:
       containers:
       - name: payment-adapter
-        image: docker.io/causely-oss/payment-adapter:v4
+        image: docker.io/causely-oss/payment-adapter:v5
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8092
