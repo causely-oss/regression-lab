@@ -79,14 +79,13 @@ When handing off to an agent under test:
    `git log --all` / `git show <other-branch>:<path>` still see every
    `scenario-NN-*-bug` branch and this `scenarios/` directory no matter what's
    checked out. Only a fresh clone, restricted to one branch, has none of that
-   in its object database to find. This repo's git root is one level up from
-   `regression-lab` (a shared monorepo with many unrelated branches too), so
-   clone from there:
+   in its object database to find. Clone straight from GitHub rather than
+   reusing a local checkout:
    ```bash
    git clone --single-branch --branch <neutral-branch> --no-tags \
-     /path/to/your/regression-lab /path/for/agent
+     https://github.com/causely-oss/regression-lab /path/for/agent
    ```
-   Start the agent in `/path/for/agent/regression-lab`. Use a fresh destination
+   Start the agent in `/path/for/agent`. Use a fresh destination
    path per run — don't reuse one an earlier run may have touched.
 3. **Verify the deployed image tag has no scenario-identifying string** —
    `deploy.sh` tags builds as `build-<short-sha>` for exactly this reason;

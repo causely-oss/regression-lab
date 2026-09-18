@@ -23,16 +23,16 @@
 set -euo pipefail
 
 NAMESPACE="${NAMESPACE:-scenario-01}"
-REGISTRY="${REGISTRY:-causely-oss}"
+IMAGE_REPO="${IMAGE_REPO:-ghcr.io/causely-oss/regression-lab}"
 SVC="billing-service"
 TAG="build-$(git rev-parse --short=12 HEAD)"
 
 echo "=== Building $SVC from commit $(git rev-parse --short HEAD) ==="
-docker build --no-cache -t "${REGISTRY}/${SVC}:${TAG}" "environment/services/${SVC}"
-docker push "${REGISTRY}/${SVC}:${TAG}"
+docker build --no-cache -t "${IMAGE_REPO}/${SVC}:${TAG}" "environment/services/${SVC}"
+docker push "${IMAGE_REPO}/${SVC}:${TAG}"
 
-echo "=== Pointing $SVC at ${REGISTRY}/${SVC}:${TAG} (imagePullPolicy: Always) ==="
-kubectl set image deploy/"$SVC" "$SVC"="${REGISTRY}/${SVC}:${TAG}" -n "$NAMESPACE"
+echo "=== Pointing $SVC at ${IMAGE_REPO}/${SVC}:${TAG} (imagePullPolicy: Always) ==="
+kubectl set image deploy/"$SVC" "$SVC"="${IMAGE_REPO}/${SVC}:${TAG}" -n "$NAMESPACE"
 kubectl patch deploy/"$SVC" -n "$NAMESPACE" --type=json \
   -p="[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/imagePullPolicy\",\"value\":\"Always\"}]"
 
@@ -43,4 +43,4 @@ kubectl rollout status deploy/"$SVC" -n "$NAMESPACE" --timeout=120s
 echo ""
 echo "Done. Wait ~60s for metrics to stabilize before injecting/observing."
 echo "To go back to the fleet baseline afterward:"
-echo "  kubectl set image deploy/$SVC $SVC=${REGISTRY}/${SVC}:v3 -n $NAMESPACE   # check k8s/03-app.yaml for the current baseline tag"
+echo "  kubectl set image deploy/$SVC $SVC=${IMAGE_REPO}/${SVC}:v3 -n $NAMESPACE   # check k8s/03-app.yaml for the current baseline tag"
