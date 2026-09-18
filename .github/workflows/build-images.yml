@@ -1,0 +1,84 @@
+name: Build images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "environment/services/**"
+      - ".github/workflows/build-images.yml"
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_REPO: ghcr.io/causely-oss/regression-lab
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - analytics-service
+          - api-gateway
+          - audit-service
+          - auth-service
+          - billing-service
+          - cache-service
+          - cart-service
+          - catalog-service
+          - checkout
+          - delivery-service
+          - discount-service
+          - email-service
+          - external-payment-api
+          - fraud-detection
+          - fraud-detection-py
+          - frontend
+          - ingest-service
+          - inventory-service
+          - loyalty-service
+          - media-service
+          - notification-service
+          - orders-service
+          - payment-adapter
+          - payments-api
+          - pricing-service
+          - processing-service
+          - profile-service
+          - ranking-service
+          - recommendation-service
+          - reporting-service
+          - review-service
+          - search-service
+          - session-service
+          - shipping-service
+          - tax-service
+          - user-service
+          - warehouse-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Compute short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: environment/services/${{ matrix.service }}
+          push: true
+          tags: ${{ env.IMAGE_REPO }}/${{ matrix.service }}:build-${{ steps.sha.outputs.short }}

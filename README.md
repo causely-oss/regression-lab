@@ -1,5 +1,14 @@
-## Overview
+# Regression Lab
 
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
+Unlike [causely-oss/tracey-shop](https://github.com/causely-oss/tracey-shop), whose faults are
+runtime toggles you flip on and off against a healthy baseline, this repo's faults are **shipped
+code and config regressions** — as if a bad PR had merged. There's no flag to flip back; fixing
+one means reading the current source and writing a real diff, the same way you'd fix a production
+incident.
+
+## Overview
 
 The platform runs **36 Go microservices** (built with `net/http`, Prometheus client,
 sarama for Kafka, go-redis, and pgx for PostgreSQL) with complex service-to-service
