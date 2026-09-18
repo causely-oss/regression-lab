@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_pod_errors.sh
 #
 # Restores checkout after inject_pod_errors.sh.

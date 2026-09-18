@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # inject_external_api_latency.sh
 #
 # Scenario: External payment API latency → 3s, 6% failure rate, retry amplification.

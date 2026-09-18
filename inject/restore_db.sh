@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_db.sh
 #
 # Restores payments-db to normal baseline query latency (~20ms).

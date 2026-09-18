@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Add OTLP metric export (http.server.request.duration) to every Go service."""
 from __future__ import annotations
 

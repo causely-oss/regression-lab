@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_cpu_throttle.sh
 #
 # Restores search-service and ranking-service after inject_cpu_throttle.sh.

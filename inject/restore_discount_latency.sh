@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_discount_latency.sh
 #
 # Restores discount-service after inject_discount_latency.sh.

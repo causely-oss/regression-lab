@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_redis_pressure.sh
 #
 # Restores Redis to normal after inject_redis_pressure.sh.

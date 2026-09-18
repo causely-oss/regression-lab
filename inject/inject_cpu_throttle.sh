@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # inject_cpu_throttle.sh
 #
 # Scenario: Node-3 CPU throttling (90% sustained) — search + ranking pods affected.

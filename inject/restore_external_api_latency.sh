@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_external_api_latency.sh
 #
 # Restores external-payment-api after inject_external_api_latency.sh.

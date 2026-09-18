@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # inject_inventory_stall.sh
 #
 # Scenario: Inventory consumer stalls — Kafka lag grows, orders-service times out.

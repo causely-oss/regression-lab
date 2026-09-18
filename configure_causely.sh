@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # configure_causely.sh
 #
 # Applies Causely labels to all services in the scenario-01 namespace:

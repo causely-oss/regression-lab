@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # inject_orders_retry_loop.sh
 #
 # Scenario: Orders retry loop overloads inventory — inventory logs errors,

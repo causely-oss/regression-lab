@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Patch all scenario-01 Go services to export OTLP via WithEndpoint (Alloy /v1/traces)."""
 from __future__ import annotations
 

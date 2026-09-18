@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """
 Load generator for Scenario 01 — Checkout Failure from Upstream DB
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # production-scale.sh
 #
 # Sets 3 replicas and HPA minReplicas=3 for the 12 high-traffic services.

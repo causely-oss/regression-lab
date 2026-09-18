@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # trigger.sh — simulate an ordinary transient slowdown in payment-adapter.
 #
 # This is NOT the bug. It represents normal dependency variance that a

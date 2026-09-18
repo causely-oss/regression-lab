@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_inventory_stall.sh
 #
 # Restores inventory-service to normal after inject_inventory_stall.sh.

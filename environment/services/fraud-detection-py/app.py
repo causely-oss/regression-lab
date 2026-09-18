@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 """
 fraud-detection — checks transactions for fraud. Uses Redis for rate tracking.
 Called by billing-service and checkout.

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # inject_deep_chain_latency.sh
 #
 # Scenario: Deep call chain latency — recommendation-service slowdown cascades

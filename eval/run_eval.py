@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """
 Eval harness: compare Claude + Grafana MCP vs Claude + Grafana MCP + Causely MCP.
 

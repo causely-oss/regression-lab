@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # inject_db_latency.sh
 #
 # Simulates a payments-db latency spike:

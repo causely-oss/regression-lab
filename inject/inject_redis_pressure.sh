@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # inject_redis_pressure.sh
 #
 # Scenario: Redis memory pressure → eviction spike, cache hit rate drops,

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """
 Generator script: creates all 36 service main.go files, go.mod files, Dockerfiles,
 updates k8s manifests, docker-compose, prometheus config, and build script.

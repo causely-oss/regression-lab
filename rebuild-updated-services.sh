@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # rebuild-updated-services.sh
 #
 # Rebuilds and redeploys all services that were modified for injection scenario fixes.

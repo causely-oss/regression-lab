@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """
 generate_dashboard.py
 Generates the Grafana dashboard JSON for scenario-01 and writes it to:

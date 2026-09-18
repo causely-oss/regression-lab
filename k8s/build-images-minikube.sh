@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # build-images.sh
 #
 # Builds all custom service images directly into minikube's Docker daemon.

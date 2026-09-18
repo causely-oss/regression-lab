@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_orders_retry_loop.sh
 #
 # Restores orders-service and inventory-service after inject_orders_retry_loop.sh.

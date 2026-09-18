@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_all.sh
 #
 # Restores ALL services to baseline. Run this to clean up after any injection.

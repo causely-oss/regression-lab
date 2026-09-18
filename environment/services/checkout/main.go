@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // checkout -- orchestrates the checkout flow.
 //
 // 1. Reads cart from Redis (cart cache)

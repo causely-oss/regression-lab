@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # inject_pod_errors.sh
 #
 # Scenario: Elevated errors in individual pods — stdout errors visible in logs.

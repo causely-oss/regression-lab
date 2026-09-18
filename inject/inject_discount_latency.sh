@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # inject_discount_latency.sh
 #
 # Scenario: Discount-service latency spike (no traces) — downstream slowdown.

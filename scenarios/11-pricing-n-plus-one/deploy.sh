@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # deploy.sh — build + push + roll out pricing-service from whatever is
 # currently checked out (bug tree or fix tree, doesn't matter which).
 #

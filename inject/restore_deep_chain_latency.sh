@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # restore_deep_chain_latency.sh
 #
 # Restores recommendation-service after inject_deep_chain_latency.sh.
