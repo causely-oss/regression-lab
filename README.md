@@ -2,11 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Unlike [causely-oss/tracey-shop](https://github.com/causely-oss/tracey-shop), whose faults are
-runtime toggles you flip on and off against a healthy baseline, this repo's faults are **shipped
-code and config regressions** — as if a bad PR had merged. There's no flag to flip back; fixing
-one means reading the current source and writing a real diff, the same way you'd fix a production
-incident.
+This repo simulates production incidents so you can measure how well an on-call agent resolves them. Faults are either shipped code/config regressions (as if a bad PR merged; the fix is a real diff) or runtime failure injection (a toggle you flip back).
 
 ## Overview
 
